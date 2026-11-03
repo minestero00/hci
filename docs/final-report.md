@@ -220,7 +220,18 @@ UI·기록기·연구자 흐름은 분담 구현한 뒤 각 영역을 별도 맥
 
 DOM 검증에는 happy-dom과 fake-indexeddb를 사용한다. 실제 Chrome의 렌더링·스크롤·다운로드·접근성 트리 검증과 같지 않다. 이 작업에서는 컴퓨터 사용 도구의 브라우저 정책 차단으로 실제 브라우저 시각 검증을 수행하지 못했다. 따라서 화면 품질과 실제 체감 UX는 아래 사람 파일럿의 확인 대상이다.
 
-GitHub Actions는 main push마다 의존성 설치, 전체 시험, 정적 빌드와 Pages 배포를 수행한다. 최초 배포는 `61a1132`에서 완료했으며 이후 개선판의 정확한 커밋·실행 상태는 위 [워크플로 기록](https://github.com/minestero00/hci/actions/workflows/pages.yml)에서 확인한다. 공개 주소의 HTML·모듈·CSS 응답과 빌드 산출물 일치 여부를 배포 후 확인한다.
+GitHub Actions는 main push마다 의존성 설치, 전체 시험, 정적 빌드와 Pages 배포를 수행한다. 최초 배포는 `61a1132`에서 완료했다. 이번 개선 구현의 검증 기록은 다음과 같다. 이 기록을 추가하는 후속 문서 커밋에서는 런타임 코드를 변경하지 않는다.
+
+| 검증 항목 | 고정된 대상과 결과 |
+|---|---|
+| 구현 커밋 | [dc3797733603d406dddf118519ed50793343aa81](https://github.com/minestero00/hci/commit/dc3797733603d406dddf118519ed50793343aa81) |
+| GitHub 검증·배포 | [Actions 41662897880](https://github.com/minestero00/hci/actions/runs/41662897880), build·deploy 모두 success |
+| 자동 시험 | 전체 40개, 로컬 및 위 CI의 전체 시험 단계 통과 |
+| 정적 빌드 | 모듈 구문 검사와 14개 정적 파일 생성 성공 |
+| 배포 완료 | 2026년 11월 4일 00:21 KST |
+| 공개 HTTP 확인 | 참가자 루트와 14개 HTML·모듈·CSS 파일 정상 응답, 로컬 빌드와 바이트 일치, 모듈 JavaScript MIME 확인 |
+
+이후 변경은 [워크플로 목록](https://github.com/minestero00/hci/actions/workflows/pages.yml)에서 해당 head SHA의 실행을 확인한다. HTTP·산출물 대조는 실제 브라우저 시각 검증이나 사람 파일럿의 대체가 아니다.
 
 ## 9. 해석의 한계와 본 실험 진입 조건
 
