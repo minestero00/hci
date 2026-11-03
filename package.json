@@ -1,0 +1,20 @@
+{
+  "name": "hci-decision-workspace",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PC browser pilot for decision support and independent performance",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node scripts/dev-server.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "npm test && npm run build"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.2.7",
+    "happy-dom": "^21.0.4"
+  }
+}
