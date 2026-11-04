@@ -38,8 +38,8 @@ export function summarizeBehavior(events = []) {
     if(event.type==='selection')count('selectionCount');
     if(event.type==='focus_in')count('focusSwitches');
     if(event.type==='hover_end')count('hoverMs',finite(data.durationMs));
-    if(event.type==='storage_failure')quality.storageFailures++;
-    if(event.type==='export_warning')quality.exportWarnings++;
+    if(['storage_failure','response_storage_error'].includes(event.type))quality.storageFailures++;
+    if(['export_warning','export_failed'].includes(event.type))quality.exportWarnings++;
     if(data.sourceId && ['source_exposure_end','source_viewport','hover_end'].includes(event.type)) {
       const sourceKey=JSON.stringify([event.runId||null,data.sourceId]);
       if(!sources.has(sourceKey))sources.set(sourceKey,{runId:event.runId||null,sourceId:data.sourceId,exposureMs:0,exposureCount:0,maxRatio:0,hoverMs:0});

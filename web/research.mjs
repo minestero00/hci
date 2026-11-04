@@ -33,9 +33,12 @@ async function persist() {
   catch (error) { savedStatus(true); message(`자동 저장에 실패했습니다. 전체 보관 파일을 내려받아 주세요. ${error.message}`, true); return false; }
 }
 function download(name, content, type = 'application/json') {
-  const blob = new Blob([typeof content === 'string' ? content : JSON.stringify(content, null, 2)], { type });
-  const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name;
-  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500);
+  try {
+    const blob = new Blob([typeof content === 'string' ? content : JSON.stringify(content, null, 2)], { type });
+    const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name;
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500);
+    $('research-download-status').textContent = `${name} 다운로드를 요청했습니다. 브라우저의 다운로드 목록에서 파일을 확인해 주세요.`;
+  } catch { message('파일을 만들지 못했습니다. 이 창을 닫지 말고 다시 시도해 주세요.', true); }
 }
 function jsonDownload(name, content) { download(`${name}.json`, content); }
 function csvDownload(name, table) { download(`${name}.csv`, tableCSV(table), 'text/csv;charset=utf-8'); }
@@ -46,7 +49,7 @@ function stats() {
 }
 function header(kicker, title, description) { return `<p class="research-kicker">${esc(kicker)}</p><h1>${esc(title)}</h1><p class="research-intro">${esc(description)}</p>`; }
 function pills(mode) { return `<span class="r-pill${mode === 'demo' ? ' demo' : ''}">${mode === 'demo' ? '팀 체험' : '초대 참여'}</span>`; }
-function importControl(id = 'research-files', label = '응답 파일 가져오기') {
+function importControl(id = 'research-files', label = 'JSON 파일 가져오기') {
   return `<label class="r-drop" id="drop-${id}"><strong>${label}</strong><small>JSON 여러 개를 함께 선택하거나 이 영역에 놓으세요.</small><input class="r-file" type="file" id="${id}" accept=".json,application/json" multiple></label>`;
 }
 function table(headers, rows) {
@@ -93,8 +96,8 @@ function renderTimeline(events) {
 }
 function renderInvitations() {
   return header('02 / INVITATIONS', '같은 안내, 균형 있는 초대.', '한 배치 안에서 두 조건과 사례 순서를 나누어 참여 링크를 만듭니다. 참가자는 링크에 배정된 한 조건으로만 진행합니다.') +
-    `<section class="r-panel"><h2>참여 링크 만들기</h2><form id="invite-form" class="r-form"><label class="r-label">새 배치 인원<input id="invite-count" class="r-input" type="number" min="1" max="500" value="20" required></label><button class="r-button" type="submit">초대 배치 생성</button></form><div class="r-note">배정은 생성한 배치 안에서 균형을 맞춥니다. 정적 사이트이므로 서로 다른 연구자가 만든 배치나 링크의 중복 사용을 서버에서 조정하지 않습니다.</div><div class="r-actions"><button class="r-button secondary" id="invite-csv" ${state.invitations.length ? '' : 'disabled'}>링크 목록 CSV</button><button class="r-button secondary" id="invite-json" ${state.invitations.length ? '' : 'disabled'}>초대 배치 JSON</button></div></section>` +
-    `<section class="r-panel"><h2>현재 초대 배치 <span class="r-help">${state.invitations.length}개</span></h2>${table(['코드', '조건', '사례 순서', '참여 링크'], state.invitations.map(i => [esc(i.participantCode), i.condition === 'assisted' ? 'AI 지원' : '원자료', esc(i.order.map(id => taskById(id)?.title || id).join(' → ')), `<button class="r-button secondary copy-invite" data-id="${esc(i.id)}">링크 복사</button> <a class="quiet-link" href="${esc(i.url)}" target="_blank" rel="noopener">열기 ↗</a>`]))}</section>`;
+    `<section class="r-panel"><h2>참여 링크 만들기</h2><form id="invite-form" class="r-form"><label class="r-label">새 배치 인원<input id="invite-count" class="r-input" type="number" min="1" max="500" value="20" required></label><button class="r-button" type="submit">초대 배치 생성</button></form><div class="r-note">배정은 생성한 배치 안에서 균형을 맞춥니다. 정적 사이트이므로 서로 다른 연구자가 만든 배치나 링크의 중복 사용을 서버에서 조정하지 않습니다.</div><div class="r-actions"><button class="r-button secondary" id="invite-csv" ${state.invitations.length ? '' : 'disabled'}>링크 목록 CSV</button><button class="r-button secondary" id="invite-json" ${state.invitations.length ? '' : 'disabled'}>링크 목록 JSON</button></div><p class="r-help">링크 목록 JSON은 전달용입니다. 작업실 복원에는 전체 보관 JSON을 사용하세요.</p></section>` +
+    `<section class="r-panel"><h2>생성한 참여 링크 <span class="r-help">${state.invitations.length}개</span></h2>${table(['코드', '조건', '사례 순서', '참여 링크'], state.invitations.map(i => [esc(i.participantCode), i.condition === 'assisted' ? 'AI 지원' : '원자료', esc(i.order.map(id => taskById(id)?.title || id).join(' → ')), `<button class="r-button secondary copy-invite" data-id="${esc(i.id)}">링크 복사</button> <a class="quiet-link" href="${esc(i.url)}" target="_blank" rel="noopener">열기 ↗</a>`]))}</section>`;
 }
 function renderSources(task) {
   return task.sources.map(source => `<section><h3>${esc(source.title)}</h3>${source.blocks.map(b => b.type === 'p' ? `<p>${esc(b.text)}</p>` : b.type === 'list' ? `<ul>${b.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : b.type === 'table' ? `<div class="r-table"><table><thead><tr>${b.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${b.rows.map(row => `<tr>${row.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '').join('')}</section>`).join('') + `<h3>최초 제안된 실행안</h3><ul>${task.plans.map(p => `<li><b>${esc(p.title)}</b> · ${esc(p.description)}</li>`).join('')}</ul>`;
@@ -102,9 +105,9 @@ function renderSources(task) {
 function gradeItems() { return state.packet?.items || []; }
 function renderGrading() {
   const items = gradeItems(), role = state.role || 'rater1', item = items[gradeIndex];
-  const intro = header('03 / BLIND REVIEW', '답안의 근거만 보고 채점합니다.', '조건·예상 점수·최초 선택·행동 로그·AI 점수는 이 화면에 표시하지 않습니다. 채점자 1과 2는 각자 별도의 브라우저에서 채점 묶음을 사용하세요.');
-  const controls = `<section class="r-panel"><div class="r-form"><label class="r-label">현재 채점 역할<select id="grade-role" class="r-select"><option value="rater1" ${role === 'rater1' ? 'selected' : ''}>채점자 1</option><option value="rater2" ${role === 'rater2' ? 'selected' : ''}>채점자 2</option><option value="consensus" ${role === 'consensus' ? 'selected' : ''}>인간 합의</option></select></label><button id="new-packet" class="r-button secondary" ${state.envelopes.length ? '' : 'disabled'}>현재 기록으로 묶음 생성</button><button id="grade-export" class="r-button secondary" ${items.length ? '' : 'disabled'}>내 채점 결과 내려받기</button></div><p class="r-help">다른 채점자의 파일도 아래에서 가져올 수 있습니다. 독립 채점 중에는 해당 점수를 보여주지 않습니다.</p><label class="r-label">채점 묶음·결과 JSON 가져오기<input type="file" id="grading-files" class="r-file" accept=".json,application/json" multiple></label></section>`;
-  if (!item) return intro + controls + `<div class="r-panel r-empty">원응답으로 채점 묶음을 생성하거나, 전달받은 블라인드 채점 JSON을 가져오세요.</div>`;
+  const intro = header('03 / BLIND REVIEW', role==='consensus'?'두 독립 채점을 확인하고 합의합니다.':'답안의 근거만 보고 채점합니다.', (role === 'consensus' ? '두 사람의 독립 채점 결과를 확인하고 합의 점수와 근거를 기록하세요. 조건·예상 점수·행동 로그·AI 점수는 이 답안 영역에 표시하지 않습니다.' : '조건·예상 점수·최초 선택·행동 로그·다른 사람과 AI 점수는 이 답안 영역에 표시하지 않습니다. 채점자 1과 2는 각자 별도의 브라우저에서 채점 묶음을 사용하세요.'));
+  const controls = `<section class="r-panel"><div class="r-form"><label class="r-label">현재 채점 역할<select id="grade-role" class="r-select"><option value="rater1" ${role === 'rater1' ? 'selected' : ''}>채점자 1</option><option value="rater2" ${role === 'rater2' ? 'selected' : ''}>채점자 2</option><option value="consensus" ${role === 'consensus' ? 'selected' : ''}>인간 합의</option></select></label><button id="new-packet" class="r-button secondary" ${knownResponses(state.envelopes).size ? '' : 'disabled'}>현재 기록으로 묶음 생성</button><button id="grade-export" class="r-button secondary" ${items.length ? '' : 'disabled'}>내 채점 결과 내려받기</button></div><p class="r-help">다른 채점자의 파일도 아래에서 가져올 수 있습니다. 독립 채점 중에는 해당 점수를 보여주지 않습니다.</p><label class="r-label">채점 묶음·결과 JSON 가져오기<input type="file" id="grading-files" class="r-file" accept=".json,application/json" multiple></label></section>`;
+  if (!item) return intro + controls + `<div class="r-panel r-empty">채점할 메모가 없습니다. 메모가 포함된 응답 파일이나 전달받은 채점 묶음을 가져오세요.</div>`;
   const task = taskById(item.taskId), key = ANSWER_KEY[task.id], grades = state.ratings[item.responseId] || {}, current = grades[role];
   const hasBoth = grades.rater1 && grades.rater2;
   const consensusNote = role === 'consensus' ? `<div class="r-note${hasBoth ? '' : ' warning'}">${hasBoth ? `채점자 1: ${grades.rater1.score}점 · 채점자 2: ${grades.rater2.score}점. AI 점수는 표시하지 않습니다.` : '두 채점자의 독립 점수를 먼저 가져오세요. 합의 입력은 그 뒤 가능합니다.'}</div>` : '';
@@ -128,9 +131,9 @@ function behaviorTables(includeDemo = false) {
 function renderExport() {
   const s=stats(),completedPilot=state.envelopes.filter(e=>e.run.mode==='pilot'&&e.run.status==='completed').length;
   return header('04 / ANALYSIS FILES', '원기록에서 분석 자료까지.', '미채점은 빈칸으로 남깁니다. 인간 합의 점수가 모두 있어야 참가자별 주 분석값을 계산합니다.') +
-    `<div class="research-cards"><div class="research-stat"><span>완료한 초대 참여</span><b>${completedPilot}<small> 건</small></b></div><div class="research-stat"><span>인간 합의 완료</span><b>${s.rated}<small> / ${s.memos}</small></b></div><div class="research-stat"><span>내보낼 원기록</span><b>${state.envelopes.reduce((n,e)=>n+e.events.length,0).toLocaleString()}<small> 개</small></b></div></div><section class="r-panel"><h2>분석용 CSV</h2><p>사례·문항·이벤트를 독립 참가자로 세지 마세요. 세 사례 평균이 참가자 한 명의 주 분석값입니다.</p><label class="r-inline"><input type="checkbox" id="include-demo"> 팀 체험 기록도 포함 <span class="r-help">기본은 초대 참여만</span></label><div class="r-actions">${[['participants','참가자별'],['cases','사례별'],['items','문항별'],['events','행동 로그']].map(([id,label]) => `<button class="r-button secondary" data-export="${id}">${label} CSV</button>`).join('')}</div><div class="r-note">실제 점수 = 선택형 합계 + 인간 합의 점수. AI 단독·인간/AI 평균은 별도 열로 출력합니다. 점수 0과 미채점은 구분합니다.</div></section>` +
+    `<div class="research-cards"><div class="research-stat"><span>완료한 초대 참여</span><b>${completedPilot}<small> 건</small></b></div><div class="research-stat"><span>인간 합의 완료 · 전체</span><b>${s.rated}<small> / ${s.memos}</small></b><small>팀 체험 포함</small></div><div class="research-stat"><span>작업실 원기록 · 전체</span><b>${state.envelopes.reduce((n,e)=>n+e.events.length,0).toLocaleString()}<small> 개</small></b><small>팀 체험 포함</small></div></div><section class="r-panel"><h2>분석용 CSV</h2><p>사례·문항·이벤트를 독립 참가자로 세지 마세요. 세 사례 평균이 참가자 한 명의 주 분석값입니다.</p><label class="r-inline"><input type="checkbox" id="include-demo"> 팀 체험 기록도 포함 <span class="r-help">기본은 초대 참여만</span></label><div class="r-actions">${[['participants','참가자별'],['cases','사례별'],['items','문항별'],['events','행동 로그']].map(([id,label]) => `<button class="r-button secondary" data-export="${id}">${label} CSV</button>`).join('')}</div><div class="r-note">실제 점수 = 선택형 합계 + 인간 합의 점수. AI 단독·인간/AI 평균은 별도 열로 출력합니다. 점수 0과 미채점은 구분합니다.</div></section>` +
     `<section class="r-panel"><h2>행동 요약 CSV</h2><p>위의 팀 체험 포함 설정을 똑같이 적용합니다. 원본 이벤트와 실행 번호로 연결할 수 있습니다.</p><div class="r-actions">${[['runs','실행별 행동 요약'],['stages','단계별 행동 요약'],['sources','자료별 화면 노출']].map(([id,label])=>`<button class="r-button secondary" data-behavior-export="${id}" ${state.envelopes.length?'':'disabled'}>${label} CSV</button>`).join('')}</div><p class="r-help">전경·최근 상호작용·자료 노출 시간은 관찰 지표입니다. 읽기나 이해를 뜻하지 않으며, 이전 형식에 없는 시간은 빈칸입니다.</p></section>` +
-    `<div class="r-grid-two"><section class="r-panel"><h2>독립 채점 파일</h2><p>조건과 예상 점수를 제외한 답안·원자료·기준을 전달합니다.</p><div class="r-actions"><button class="r-button" id="blind-export" ${state.envelopes.length ? '' : 'disabled'}>인간 채점 묶음</button><button class="r-button secondary" id="ai-export" ${state.envelopes.length ? '' : 'disabled'}>AI 채점 입력 묶음</button></div><p class="r-help">AI를 자동 호출하지 않습니다. 입력 묶음의 형식에 맞춘 결과 JSON을 가져오면 연결됩니다.</p></section><section class="r-panel"><h2>채점 결과 가져오기</h2><p>인간 1·2·합의 또는 모델·프롬프트 버전이 포함된 AI 결과를 가져옵니다.</p><label class="r-label">채점 결과 JSON 선택<input class="r-file" id="rating-files" type="file" accept=".json,application/json" multiple></label><p class="r-help">같은 답안·역할의 서로 다른 점수는 자동으로 덮어쓰지 않습니다.</p></section></div>` +
+    `<div class="r-grid-two"><section class="r-panel"><h2>독립 채점 파일</h2><p>조건과 예상 점수를 제외한 답안·원자료·기준을 전달합니다.</p><div class="r-actions"><button class="r-button" id="blind-export" ${knownResponses(state.envelopes).size ? '' : 'disabled'}>인간 채점 묶음</button><button class="r-button secondary" id="ai-export" ${knownResponses(state.envelopes).size ? '' : 'disabled'}>AI 채점 입력 묶음</button></div><p class="r-help">AI를 자동 호출하지 않습니다. 입력 묶음의 형식에 맞춘 결과 JSON을 가져오면 연결됩니다.</p></section><section class="r-panel"><h2>채점 결과 가져오기</h2><p>인간 1·2·합의 또는 모델·프롬프트 버전이 포함된 AI 결과를 가져옵니다.</p><label class="r-label">채점 결과 JSON 선택<input class="r-file" id="rating-files" type="file" accept=".json,application/json" multiple></label><p class="r-help">같은 답안·역할의 서로 다른 점수는 자동으로 덮어쓰지 않습니다.</p></section></div>` +
     `<section class="r-panel"><h2>전체 보관</h2><p>원응답·로그·채점·초대 배치를 하나의 파일로 보관합니다. 보관 파일도 ‘기록 모으기’에서 복원할 수 있습니다.</p><button class="r-button secondary" id="archive-download">전체 보관 파일 내려받기</button></section>`;
 }
 function render(view = currentView, focus = false) {
@@ -226,7 +229,7 @@ function bind() {
       invitationBusy=true;event.target.querySelector('button[type=submit]').disabled=true;
       const generated = makeInvitations(count, new URL('./index.html', location.href).href);
       state.invitations = [...state.invitations, ...generated]; const stored=await persist(); render();
-      message(stored?`${generated.length}개의 링크를 새 배치로 만들었습니다. 목록을 내려받아 전달하세요.`:`${generated.length}개의 링크를 만들었지만 자동 저장에 실패했습니다. 이 창을 닫기 전에 초대 배치 JSON 또는 전체 보관 JSON을 내려받으세요.`,!stored);
+      message(stored?`${generated.length}개의 링크를 새 배치로 만들었습니다. 목록을 내려받아 전달하세요.`:`${generated.length}개의 링크를 만들었지만 자동 저장에 실패했습니다. 이 창을 닫기 전에 링크 전달용 목록과 복원용 전체 보관 JSON을 내려받으세요.`,!stored);
     } catch (error) { message(error.message, true); }
     finally{invitationBusy=false;const button=$('invite-form')?.querySelector('button[type=submit]');if(button)button.disabled=false;}
   };

@@ -22,17 +22,19 @@ const settled=()=>until(()=>document.getElementById('research-save')?.textConten
 test('research DOM imports records, grades independently, merges packets and exports eligible CSV',async t=>{
  const env=await domEnvironment(new URL('../web/research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
  await import('../web/research.mjs?dom-research');
+ document.querySelector('[data-view=grade]').click();assert.equal(document.getElementById('new-packet').disabled,true);assert.match(document.getElementById('research-view').textContent,/채점할 메모가 없습니다/);document.querySelector('[data-view=collect]').click();
  const original=fixture();upload(env,'research-files',original);
  await until(()=>document.querySelector('.r-table')?.textContent.includes('UI_TEST'),'imported record');
  upload(env,'research-files',original,'same-record.json');await until(()=>document.getElementById('research-message').textContent.includes('중복 1'),'dedup');
  document.querySelector('[data-view=invite]').click();document.getElementById('invite-count').value='4';submit(document,'invite-form');
  await until(()=>document.querySelectorAll('.copy-invite').length===4,'invitation batch');
+ assert.match(document.getElementById('research-view').textContent,/생성한 참여 링크/);assert.match(document.getElementById('research-view').textContent,/링크 목록 JSON은 전달용/);document.getElementById('invite-json').click();assert.match(document.getElementById('research-download-status').textContent,/다운로드를 요청했습니다/);
  const links=[...document.querySelectorAll('.r-table a')].map(a=>a.href);assert.equal(links.length,4);assert.ok(links.every(link=>link.startsWith('https://example.test/hci/index.html#invite=')));
  document.querySelector('[data-view=grade]').click();document.getElementById('new-packet').click();
  await until(()=>document.getElementById('grade-form'),'blind deck');
  assert.equal(document.querySelector('.r-answer img'),null);assert.ok(document.querySelector('.r-answer').textContent.includes('<img'));
  for(const role of ['rater1','rater2','consensus']){
-  const select=document.getElementById('grade-role');select.value=role;select.dispatchEvent(new window.Event('change',{bubbles:true}));await settled();
+  const select=document.getElementById('grade-role');select.value=role;select.dispatchEvent(new window.Event('change',{bubbles:true}));await settled();if(role==='consensus')assert.match(document.querySelector('#research-view h1').textContent,/두 독립 채점/);
   for(let index=0;index<3;index++){
    if(role!=='rater1')while(!document.getElementById('grade-prev').disabled){document.getElementById('grade-prev').click();}
    if(role!=='rater1')for(let previous=0;previous<index;previous++)document.getElementById('grade-next').click();

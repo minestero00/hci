@@ -96,7 +96,7 @@ input[type=radio],input[type=checkbox] { accent-color:var(--teal); flex-shrink:0
 .case-preview-row { display:flex; gap:20px; align-items:center; padding:22px 4px; border-top:1px solid var(--line); }
 .case-preview-row h2 { font-size:20px; margin:0 0 4px; }
 .case-preview-row p { color:var(--muted); font-size:15px; }
-.case-preview-row>span:last-child { margin-left:auto; font-size:22px; color:var(--teal); }
+.case-preview-row>.document-icon { display:grid; place-items:center; width:28px; height:28px; padding:0; color:var(--teal); }
 .case-number { font-family:ui-monospace,monospace; font-size:13px; color:var(--muted); }
 .journey-card h2 { font-size:19px; }
 .journey-list { list-style:none; margin:20px 0; padding:0; display:grid; gap:20px; }

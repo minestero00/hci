@@ -73,6 +73,8 @@ test('legacy summaries preserve missing durations and deduplicate event IDs',()=
  const event={id:'legacy',pageId:'p',phase:'memo',taskId:'event',updateId:null,type:'input_action',data:{}};
  const summary=summarizeBehavior([event,event]);assert.equal(summary.totals.events,1);assert.equal(summary.totals.inputActions,1);assert.equal(summary.totals.durationMs,null);assert.equal(summary.stages[0].durationMs,null);assert.ok(summary.quality.warnings.length);
  assert.equal(summarizeBehavior([]).totals.events,0);
+ const failures=summarizeBehavior([{...event,id:'response-failed',type:'response_storage_error'},{...event,id:'export-failed',type:'export_failed'}]);
+ assert.equal(failures.quality.storageFailures,1);assert.equal(failures.quality.exportWarnings,1);
 });
 
 
