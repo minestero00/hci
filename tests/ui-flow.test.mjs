@@ -10,7 +10,7 @@ for(const condition of ['assisted','control'])test(`participant ${condition} scr
  const env=await domEnvironment(new URL('../web/index.html',import.meta.url),invite.url);t.after(()=>env.cleanup());
  await import(`../web/app.mjs?dom-flow-${condition}`);
  await until(()=>env.document.querySelector('#start-form'),'welcome');
- assert.equal(document.querySelector('a[href*=research]'),null);assert.ok(!document.getElementById('main').textContent.includes('명단, 인력, 준비 시간'));
+ assert.equal(document.querySelector('a[href*=research]'),null);assert.match(document.querySelector('.welcome-lead').textContent,/가상 업무/);assert.ok(!document.getElementById('main').textContent.includes('명단, 인력, 준비 시간'));
  env.document.querySelector('input[name=consent]').checked=true;submit(env.document,'start-form');
  const store=await new BrowserStore().init();
  const getRun=async()=>{const id=localStorage.getItem('hci-workspace.activeRun');return id?store.getRun(id):null;};
