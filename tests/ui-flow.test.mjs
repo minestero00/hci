@@ -29,7 +29,7 @@ for(const condition of ['assisted','control'])test(`participant ${condition} scr
      assert.equal(env.document.querySelector('.ai-card'),null);
      const area=env.document.querySelector('textarea[name=text]');area.value='조건의 관계를 확인했습니다. <script>실행되지 않는 답안</script>';
      area.dispatchEvent(new window.Event('compositionstart',{bubbles:true}));area.dispatchEvent(new window.Event('input',{bubbles:true}));area.dispatchEvent(new window.Event('compositionend',{bubbles:true}));
-     await until(async()=>{const saved=await getRun();return saved?.draft.values.text===area.value;},'IME draft persisted');
+     await until(async()=>{const saved=await getRun();return saved?.draft.values.text===area.value;},'IME draft persisted');await until(()=>document.getElementById('save-status').textContent==='이 브라우저에 자동 저장','IME draft save status settled');
    }
    if(!midrunExported&&info.phase==='estimate'){document.querySelector('button[data-action=download]').click();await until(()=>env.blobs.length===1,'intermediate export');await until(()=>!document.querySelector('#step-form button[type=submit]').disabled,'export settled');midrunExported=true;}
    const count=run.submissions.length;submit(env.document,'step-form');

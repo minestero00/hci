@@ -98,3 +98,28 @@ test('invitation creation preserves actionable storage failure and downloadable 
  assert.equal(document.getElementById('research-message').getAttribute('role'),'alert');assert.match(document.getElementById('research-save').textContent,/저장 실패/);
  document.getElementById('invite-json').click();assert.equal(JSON.parse(await env.blobs.at(-1).text()).invitations.length,4);assert.equal(document.querySelector('#invite-form button[type=submit]').disabled,false);
 });
+
+test('research collection paginates without losing records and exposes reset and export scope',async t=>{
+ const env=await domEnvironment(new URL('../web/research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
+ await import('../web/research.mjs?collection-pages');
+ assert.ok(document.getElementById('open-collection-files'));
+ const envelopes=Array.from({length:25},(_,i)=>makeEnvelope(createRun({participantCode:`PAGE${String(i).padStart(2,'0')}`,condition:'control',mode:i===24?'demo':'pilot'}),[]));
+ upload(env,'research-files',{format:'hci-research-archive',schemaVersion:1,studyVersion:envelopes[0].studyVersion,envelopes,ratings:{},invitations:[],packet:null,gradeHistory:[]});
+ await until(()=>document.querySelectorAll('.inspect-run').length===20,'first collection page');
+ document.getElementById('collection-next').click();assert.equal(document.querySelectorAll('.inspect-run').length,5);assert.equal(document.activeElement.id,'collection-count');assert.match(document.getElementById('collection-list').textContent,/PAGE24/);
+ const search=document.getElementById('collection-search');search.focus();search.value='PAGE00';search.dispatchEvent(new window.Event('input',{bubbles:true}));assert.equal(document.querySelectorAll('.inspect-run').length,1);assert.equal(document.activeElement,search);
+ search.value='no match';search.dispatchEvent(new window.Event('input',{bubbles:true}));document.getElementById('reset-collection').click();assert.equal(document.querySelectorAll('.inspect-run').length,20);assert.equal(document.activeElement.id,'collection-search');
+ document.querySelector('[data-view=export]').click();assert.match(document.getElementById('export-scope').textContent,/24개 실행/);const include=document.getElementById('include-demo');include.checked=true;include.dispatchEvent(new window.Event('change',{bubbles:true}));assert.match(document.getElementById('export-scope').textContent,/25개 실행/);
+ document.getElementById('archive-download').click();assert.equal(JSON.parse(await env.blobs.at(-1).text()).envelopes.length,25);
+});
+
+test('grading shows progress, retains failed-save recovery focus and restores ordinary save focus',async t=>{
+ const env=await domEnvironment(new URL('../web/research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
+ const originalSave=ResearchStore.prototype.save;t.after(()=>{ResearchStore.prototype.save=originalSave;});
+ await import('../web/research.mjs?grade-save-focus');upload(env,'research-files',fixture());await until(()=>document.querySelector('.inspect-run'),'record');
+ document.querySelector('[data-view=grade]').click();document.getElementById('new-packet').click();await until(()=>document.getElementById('grade-form'),'grading');
+ choose(document,'score',2);document.getElementById('grade-reason').value='확인한 관계';document.getElementById('grade-reason').dispatchEvent(new window.Event('input',{bubbles:true}));assert.match(document.getElementById('grade-edit-status').textContent,/저장하지 않은 변경/);
+ let rejectSave;ResearchStore.prototype.save=()=>new Promise((_,reject)=>{rejectSave=reject;});submit(document,'grade-form');await until(()=>rejectSave,'pending grade save');assert.equal(document.getElementById('grade-form').inert,true);assert.equal(document.getElementById('grade-form').getAttribute('aria-busy'),'true');assert.match(document.querySelector('#grade-form button[type=submit]').textContent,/저장 중/);
+ rejectSave(Error('injected failure'));await until(()=>document.activeElement.id==='grade-edit-status','failed save focus');assert.match(document.getElementById('grade-edit-status').textContent,/확인하지 못했습니다/);assert.equal(document.querySelector('input[name=score]:checked').value,'2');
+ ResearchStore.prototype.save=originalSave;submit(document,'grade-form');await until(()=>document.activeElement.value==='save','ordinary save focus');assert.match(document.getElementById('grade-edit-status').textContent,/저장된 채점/);assert.match(document.getElementById('research-message').textContent,/저장했습니다/);
+});

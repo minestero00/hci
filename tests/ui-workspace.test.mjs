@@ -19,14 +19,15 @@ test('workspace validates accessibly, retains source position, explains recordin
  const settled=async phase=>until(async()=>{const run=await getRun();return run?.stage.phase===phase&&document.querySelector('#step-form button[type=submit]')&&!document.querySelector('#step-form button[type=submit]').disabled?run:null;},phase);
  await settled('practice');submit(document,'step-form');assert.match(document.querySelector('.field-error').textContent,/단어/);
  choose(document,'practiceChoice','안내');document.querySelector('[name=practiceMemo]').value='연습';submit(document,'step-form');
- await settled('decision');assert.equal(document.querySelectorAll('.phase-steps li').length,5);assert.match(document.querySelector('.phase-steps [aria-current=step]').textContent,/실행안/);
+ await settled('decision');assert.equal(document.querySelector('.workspace').dataset.layout,'panes');Object.defineProperty(window,'innerHeight',{value:250,configurable:true,writable:true});window.dispatchEvent(new window.Event('resize'));await until(()=>document.querySelector('.workspace').dataset.layout==='page','short window uses page scrolling');window.innerHeight=1000;window.dispatchEvent(new window.Event('resize'));await until(()=>document.querySelector('.workspace').dataset.layout==='panes','tall window restores panes');assert.equal(document.querySelectorAll('.phase-steps li').length,5);assert.match(document.querySelector('.phase-steps [aria-current=step]').textContent,/실행안/);
+ document.querySelector('[data-action=pane-focus][data-pane=response]').click();assert.equal(document.activeElement.id,'response-pane');document.querySelector('[data-action=answer-jump]').click();assert.equal(document.activeElement.id,'step-form');
  document.querySelector('[data-action=source-jump]').click();assert.match(document.activeElement.id,/source-/);
  submit(document,'step-form');assert.equal(document.querySelector('input[name=choice]').getAttribute('aria-invalid'),'true');assert.equal((await getRun()).stage.phase,'decision');
- choose(document,'choice','unknown');document.querySelector('.source-column').scrollTop=240;submit(document,'step-form');
+ choose(document,'choice','unknown');await until(()=>!document.getElementById('save-status').textContent.includes('대기')&&!document.getElementById('save-status').textContent.includes('중'),'successful draft paints settled save state');assert.match(document.getElementById('response-state').textContent,/응답을 선택했습니다/);document.querySelector('.source-column').scrollTop=240;submit(document,'step-form');
  await settled('estimate');assert.equal(document.querySelector('.source-column').scrollTop,240);assert.match(document.querySelector('.phase-steps [aria-current=step]').textContent,/예상 점수/);
  document.querySelector('[data-action=help]').click();await until(()=>document.querySelector('#session-dialog[open]'),'help');
  assert.match(document.getElementById('session-dialog').textContent,/누적하지 않습니다/);document.getElementById('session-dialog').dispatchEvent(new window.Event('cancel',{cancelable:true}));assert.equal(document.getElementById('app').inert,false);
- choose(document,'burden',2);choose(document,'prediction',1.5);submit(document,'step-form');await settled('update');
+ choose(document,'burden',2);assert.match(document.getElementById('response-state').textContent,/1 \/ 2/);choose(document,'prediction',1.5);assert.match(document.getElementById('response-state').textContent,/두 항목/);submit(document,'step-form');await settled('update');
  assert.equal(document.querySelector('.ai-card'),null);assert.equal(document.querySelector('.decision-column').dataset.evaluation,'true');
  choose(document,'choice','unknown');
  const alternative=document.querySelector('input[name=choice]:not([value=unknown])').value;
@@ -43,7 +44,7 @@ test('workspace validates accessibly, retains source position, explains recordin
  document.querySelector('[data-action=resume]').click();await settled('update');assert.equal(document.querySelector(`input[value="${alternative}"]`).checked,true);
  document.querySelector('button[data-action=download]').click();document.querySelector('a[data-action=home]').click();assert.equal(document.getElementById('session-dialog'),null);assert.ok(document.getElementById('step-form'));await until(()=>env.blobs.length,'midrun export');
  const envelope=JSON.parse(await env.blobs.at(-1).text());assert.equal(validateEnvelope(envelope),true);
- assert.ok(envelope.events.some(e=>e.type==='recorder_started'&&e.data.uiVersion==='2026.11.04-ux4'));
+ assert.ok(envelope.events.some(e=>e.type==='recorder_started'&&e.data.uiVersion==='2026.11.07-ux5'));
  assert.ok(envelope.events.some(e=>e.type==='source_jump'));assert.ok(envelope.events.some(e=>e.type==='validation_error'));
  assert.ok(envelope.events.some(e=>e.type==='engagement_segment'&&e.data.reason==='export'));
  assert.ok(envelope.events.some(e=>e.type==='overlay_state'&&e.data.open===true));
