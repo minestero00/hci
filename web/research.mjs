@@ -1,6 +1,6 @@
 import { STUDY, TASKS } from './content.mjs';
 import { ANSWER_KEY } from './research-key.mjs';
-import { validateEnvelope, mergeEnvelopes, makeInvitations } from './core.mjs';
+import { validateEnvelope, mergeEnvelopes, makeInvitations, makeEnvelope } from './core.mjs';
 import { ResearchStore } from './research-store.mjs';
 import { summarizeBehavior } from './telemetry.mjs';
 import { responseId, knownResponses, blindPacket, validateBlindPacket, applyRatings, analysisTables, tableCSV } from './research-tools.mjs';
@@ -14,6 +14,8 @@ let collectionQuery = '', collectionMode = 'all', collectionStatus = 'all', sele
 const COLLECTION_PAGE_SIZE=20;
 let timelineType = 'all', timelineTask = 'all', timelinePage = 0, readingFiles = false, gradingBusy = false, invitationBusy = false;
 let persistenceFailed=false;
+let cloudSdk,cloudAuth,cloudDb,cloudBusy=false;
+const RESEARCH_EMAIL='superriaco@gmail.com';
 const phaseNames = { practice:'조작 연습', decision:'실행안 판단', estimate:'자기평가', update:'새 요청', memo:'인계 메모', done:'완료' };
 const duration = value => value === null || value === undefined ? '기록 없음' : value < 1000 ? `${Math.round(value)}ms` : value < 60000 ? `${(value/1000).toFixed(1)}초` : `${Math.floor(value/60000)}분 ${Math.round(value%60000/1000)}초`;
 const eventNames={click:'클릭',double_click:'두 번 클릭',context_menu:'우클릭 메뉴',pointer_move:'포인터 표본',pointer_down:'포인터 누름',hover_end:'포인터 머문 구간',scroll:'스크롤 표본',scroll_end:'스크롤 구간',control_change:'선택 변경',field_session:'입력 구간',input_started:'입력 시작',input_action:'입력 유형',composition_start:'조합 입력 시작',composition_end:'조합 입력 종료',paste:'붙여넣기',copy:'복사',cut:'잘라내기',selection:'텍스트 선택',focus_in:'요소 포커스 진입',focus_out:'요소 포커스 이탈',key_navigation:'키보드 탐색',key_action:'키보드 조작',visibility:'탭 표시 상태',window_focus:'창 포커스 진입',window_blur:'창 포커스 이탈',source_viewport:'자료 교차 비율',source_exposure_start:'자료 노출 시작',source_exposure_end:'자료 노출 종료',engagement_segment:'관찰 시간 구간',step_submitted:'응답 확정',step_entered:'단계 진입',draft_revision:'초안 수정',session_opened:'진행 시작·재개',recorder_started:'기록 시작',recorder_stopped:'기록 종료',heartbeat:'주기 상태',overlay_state:'대화상자 가림',dialog_opened:'안내 열기',dialog_closed:'안내 닫기',export_requested:'파일 요청',export_warning:'파일 복구 경고',export_failed:'파일 생성 실패',storage_failure:'행동 저장 실패',storage_recovered:'저장 복구',response_storage_error:'응답 저장 실패',source_jump:'자료 바로가기',answer_jump:'응답 바로가기',pane_focus_requested:'작업 영역 이동',workspace_presented:'작업 화면 표시',workspace_layout:'작업 영역 배치',validation_error:'응답 확인 필요',validation_invalid:'필수 입력 오류'};
@@ -168,7 +170,7 @@ function bindFiles(id) {
   }
 }
 async function readFiles(files) {
-  if(readingFiles || gradingBusy || invitationBusy || !files.length || !leaveGrade())return;
+  if(readingFiles || gradingBusy || invitationBusy || cloudBusy || !files.length || !leaveGrade())return;
   if (files.length > 100) { message('한 번에 100개 이하의 파일을 선택해 주세요.', true); return; }
   readingFiles=true;$('research-view').setAttribute('aria-busy','true');
   document.querySelectorAll('input[type=file]').forEach(input=>input.disabled=true);
@@ -243,7 +245,7 @@ function bind() {
   ['research-files','grading-files','rating-files'].forEach(bindFiles);
   if ($('archive-download')) $('archive-download').onclick = () => jsonDownload('hci-research-archive', archive());
   if ($('invite-form')) $('invite-form').onsubmit = async event => {
-    event.preventDefault();if(invitationBusy)return;
+    event.preventDefault();if(invitationBusy||cloudBusy)return;
     try {
       const count = Number($('invite-count').value);
       if (!Number.isInteger(count) || count < 1 || count > 500) throw Error('1~500명 사이로 입력해 주세요.');
@@ -261,18 +263,18 @@ function bind() {
     try { await navigator.clipboard.writeText(url); button.textContent = '복사됨'; }
     catch { message(`링크를 복사해 주세요:\n${url}`); }
   });
-  if ($('new-packet')) $('new-packet').onclick = async () => { if(gradingBusy||!leaveGrade())return; state.packet = blindPacket(state.envelopes); gradeIndex = 0; await persist(); render();document.querySelector('.r-grading-header')?.focus(); };
-  if ($('grade-role')) $('grade-role').onchange = async event => { if(gradingBusy||!leaveGrade()){event.target.value=state.role;return;} state.role = event.target.value; await persist(); render();$('grade-role').focus(); };
+  if ($('new-packet')) $('new-packet').onclick = async () => { if(gradingBusy||cloudBusy||!leaveGrade())return; state.packet = blindPacket(state.envelopes); gradeIndex = 0; await persist(); render();document.querySelector('.r-grading-header')?.focus(); };
+  if ($('grade-role')) $('grade-role').onchange = async event => { if(gradingBusy||cloudBusy||!leaveGrade()){event.target.value=state.role;return;} state.role = event.target.value; await persist(); render();$('grade-role').focus(); };
   if ($('grade-prev')) $('grade-prev').onclick = () => moveGrade(gradeIndex-1);
   if ($('grade-next')) $('grade-next').onclick = () => moveGrade(gradeIndex+1);
   if ($('grade-unrated')) $('grade-unrated').onclick=()=>moveGrade(nextUnrated());
-  if ($('blind-toggle')) $('blind-toggle').onclick = () => { if(gradingBusy||!leaveGrade())return; document.body.classList.toggle('blind-active'); render(); };
+  if ($('blind-toggle')) $('blind-toggle').onclick = () => { if(gradingBusy||cloudBusy||!leaveGrade())return; document.body.classList.toggle('blind-active'); render(); };
   if ($('grade-form')){
     const markDirty=()=>{$('grade-edit-status').textContent=gradeDirty()?'저장하지 않은 변경이 있습니다.': persistenceFailed?'자동 저장을 확인하지 못했습니다. 파일로 보관해 주세요.':'현재 저장된 채점과 같습니다.';};
     $('grade-form').oninput=markDirty;$('grade-form').onchange=markDirty;
   }
   if ($('grade-form')) $('grade-form').onsubmit = async event => {
-    event.preventDefault();if(gradingBusy)return; const item = gradeItems()[gradeIndex], role = state.role;
+    event.preventDefault();if(gradingBusy||cloudBusy)return; const item = gradeItems()[gradeIndex], role = state.role;
     const savedIndex=gradeIndex,advance=event.submitter?.value==='save-next';
     const raw = new FormData(event.target).get('score');
     if (raw === null || !['0','1','2'].includes(raw)) { message('0~2점 중 하나를 선택해 주세요.', true); return; }
@@ -333,8 +335,8 @@ function leaveGrade(){return !gradeDirty()||confirm('아직 저장하지 않은 
 function nextUnrated(){
  const items=gradeItems();for(let i=1;i<=items.length;i++){const index=(gradeIndex+i)%items.length;if(!state.ratings[items[index].responseId]?.[state.role])return index;}return -1;
 }
-function moveGrade(index){if(gradingBusy||index<0||index>=gradeItems().length||!leaveGrade())return;gradeIndex=index;message('');render();document.querySelector('.r-grading-header')?.focus();}
-function navigateView(view,focus=true){if(readingFiles||gradingBusy||invitationBusy||!leaveGrade())return;message('');render(view,focus);}
+function moveGrade(index){if(gradingBusy||cloudBusy||index<0||index>=gradeItems().length||!leaveGrade())return;gradeIndex=index;message('');render();document.querySelector('.r-grading-header')?.focus();}
+function navigateView(view,focus=true){if(readingFiles||gradingBusy||invitationBusy||cloudBusy||!leaveGrade())return;message('');render(view,focus);}
 function bindInspect(){document.querySelectorAll('.inspect-run').forEach(button=>button.onclick=()=>{selectedRunId=button.dataset.runId;timelinePage=0;timelineTask=timelineType='all';$('record-detail').innerHTML=renderRecordDetail();bindRecordDetail();document.querySelectorAll('.inspect-run').forEach(b=>b.setAttribute('aria-expanded',String(b.dataset.runId===selectedRunId)));$('record-title')?.focus({preventScroll:true});$('record-detail').scrollIntoView({block:'start',behavior:'auto'});});}
 function bindRecordDetail(){
  const envelope=state.envelopes.find(e=>e.run.id===selectedRunId);if(!envelope)return;
@@ -348,6 +350,69 @@ function bindRecordDetail(){
  function bindTimelinePages(){if($('timeline-prev'))$('timeline-prev').onclick=()=>{timelinePage--;refresh();$('timeline-list').focus();};if($('timeline-next'))$('timeline-next').onclick=()=>{timelinePage++;refresh();$('timeline-list').focus();};}
 }
 
+async function connectCloud(){
+  if(cloudSdk)return;
+  const [sdk,config]=await Promise.all([import('./firebase-sdk.mjs'),import('./cloud-config.mjs')]);
+  const app=sdk.initializeApp(config.firebaseConfig,'hci-research');cloudAuth=sdk.getAuth(app);cloudDb=sdk.getFirestore(app);cloudSdk=sdk;
+  sdk.onAuthStateChanged(cloudAuth,user=>{
+    const allowed=user?.emailVerified&&user.email?.toLowerCase()===RESEARCH_EMAIL;
+    $('cloud-status').textContent=user?(allowed?'연구자 로그인됨 · 서버 자료를 가져올 수 있습니다.':'이 계정은 연구자 조회 권한이 없습니다.'):'연구자 로그인이 필요합니다.';
+    $('cloud-load').disabled=!allowed||cloudBusy;$('cloud-login').hidden=Boolean(user);$('cloud-logout').hidden=!user;
+  });
+}
+async function cloudAction(operation){
+ if(cloudBusy||readingFiles||gradingBusy||invitationBusy||!leaveGrade())return;
+ cloudBusy=true;$('cloud-login').disabled=true;$('cloud-load').disabled=true;$('cloud-logout').disabled=true;
+ try{await connectCloud();await operation();}
+ catch(error){$('cloud-status').textContent='서버 연결을 완료하지 못했습니다. 로그인 계정·인터넷 연결을 확인하고 다시 시도해 주세요.';message(`서버 조회 실패: ${error.code||error.message}`,true);}
+ finally{cloudBusy=false;$('cloud-login').disabled=false;$('cloud-logout').disabled=false;const user=cloudAuth?.currentUser;$('cloud-load').disabled=!(user?.emailVerified&&user.email?.toLowerCase()===RESEARCH_EMAIL);}
+}
+function bindCloud(){
+ $('cloud-login').onclick=()=>cloudAction(()=>cloudSdk.signInWithPopup(cloudAuth,new cloudSdk.GoogleAuthProvider()));
+ $('cloud-logout').onclick=()=>cloudAction(()=>cloudSdk.signOut(cloudAuth));
+ $('cloud-load').onclick=()=>cloudAction(loadCloudRecords);
+}
+async function loadCloudRecords(){
+ if(!cloudAuth.currentUser?.emailVerified||cloudAuth.currentUser.email?.toLowerCase()!==RESEARCH_EMAIL)throw Error('연구자 계정으로 로그인해 주세요.');
+ $('cloud-status').textContent='서버 응답과 행동 기록을 확인하고 있습니다…';
+ const runs=await cloudSdk.getDocs(cloudSdk.collection(cloudDb,'runs'));
+ const notices=[];let added=0,duplicates=0,conflicts=0,incomplete=0;
+ for(const runDoc of runs.docs){
+  try{
+   const run=JSON.parse(runDoc.data().payload);
+   if(run.id!==runDoc.id)throw Error('실행 식별자 불일치');
+   const chunks=await cloudSdk.getDocs(cloudSdk.collection(cloudDb,'runs',run.id,'chunks'));
+   const receipt=await cloudSdk.getDocFromServer(cloudSdk.doc(cloudDb,'runs',run.id,'receipts','final'));
+   if(!receipt.exists()||receipt.data().ownerUid!==runDoc.data().ownerUid)throw Error('최종 수신 확인 없음');
+   const receiptData=JSON.parse(receipt.data().payload);
+   if(!Array.isArray(receiptData.chunkIds)||new Set(receiptData.chunkIds).size!==receiptData.chunkIds.length||receiptData.chunkIds.length>20000)throw Error('수신 확인 묶음 목록 오류');
+   const manifest=new Set(receiptData.chunkIds),eventsById=new Map();let foundChunks=0;
+   for(const chunk of chunks.docs){
+    if(!manifest.has(chunk.id))continue;
+    if(chunk.data().ownerUid!==runDoc.data().ownerUid)throw Error('기록 소유자 불일치');foundChunks++;
+    for(const event of JSON.parse(chunk.data().payload)){
+     const previous=eventsById.get(event.id);if(previous&&JSON.stringify(previous)!==JSON.stringify(event))throw Error('충돌하는 행동 이벤트');eventsById.set(event.id,event);
+    }
+   }
+   if(foundChunks!==manifest.size)throw Error('수신 확인의 일부 기록 묶음 없음');
+   const events=[...eventsById.values()].sort((a,b)=>a.at.localeCompare(b.at)||a.pageId.localeCompare(b.pageId)||a.sequence-b.sequence);
+   const validReceipt=await verifyCloudReceipt(run,events,receipt.data());
+   if(!validReceipt){incomplete++;notices.push(`${run.participantCode}: 최종 수신 확인과 응답·기록이 일치하지 않아 가져오지 않았습니다.`);continue;}
+   const envelope=makeEnvelope(run,events);validateEnvelope(envelope);
+   const merged=mergeEnvelopes(state.envelopes,[envelope]);state.envelopes=merged.items;added+=merged.added;duplicates+=merged.duplicates;conflicts+=merged.conflicts.length;
+  }catch(error){incomplete++;notices.push(`${runDoc.id}: ${error.message}`);}
+ }
+ const saved=await persist();render();$('cloud-status').textContent=`서버 조회 완료 · 추가 ${added}, 중복 ${duplicates}, 충돌 ${conflicts}, 미완료·확인 필요 ${incomplete}`;
+ message(`서버 자료: 추가 ${added}, 중복 ${duplicates}, 충돌 ${conflicts}, 미완료·확인 필요 ${incomplete}${saved?'':' · 로컬 저장 실패: 전체 보관 JSON을 내려받으세요.'}\n${notices.join('\n')}`,conflicts>0||incomplete>0||!saved);
+}
+export async function verifyCloudReceipt(run,events,receipt){
+ if(!receipt||run.status!=='completed')return false;
+ const value=typeof receipt.payload==='string'?JSON.parse(receipt.payload):receipt;
+ if(value.runId!==run.id||value.submissionCount!==run.submissions.length||value.completedAt!==run.finishedAt||value.eventCount!==events.length)return false;
+ const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(events.map(e=>e.id).sort().join('\n'))))].map(v=>v.toString(16).padStart(2,'0')).join('');
+ return value.eventIdsHash===hash;
+}
+
 try {
   repository = await new ResearchStore().init(); state = repository.state;
   const navigation=[...document.querySelectorAll('[data-view]')];
@@ -359,7 +424,8 @@ try {
       navigation[next].focus();navigateView(navigation[next].dataset.view,false);
     };
   });
-  window.addEventListener('beforeunload',event=>{if(gradeDirty()||persistenceFailed||gradingBusy||readingFiles||invitationBusy){event.preventDefault();event.returnValue='';}});
-  savedStatus(); render();
+  window.addEventListener('beforeunload',event=>{if(gradeDirty()||persistenceFailed||gradingBusy||readingFiles||invitationBusy||cloudBusy){event.preventDefault();event.returnValue='';}});
+  savedStatus(); render();bindCloud();
+  if(location.hostname==='minestero00.github.io'||new URLSearchParams(location.search).get('cloud')==='1')void cloudAction(async()=>{});
   if (repository.mode === 'memory') message('이 환경에서는 연구자 기록을 자동 보관할 수 없습니다. 작업 중 전체 보관 파일을 자주 내려받으세요.', true);
 } catch (error) { $('research-view').textContent = `작업실을 열지 못했습니다. 새로고침 후 다시 시도해 주세요. ${error.message}`; }

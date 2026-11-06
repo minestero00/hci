@@ -1,0 +1,1 @@
+{"indexes":[],"fieldOverrides":[{"collectionGroup":"runs","fieldPath":"payload","indexes":[]},{"collectionGroup":"chunks","fieldPath":"payload","indexes":[]},{"collectionGroup":"receipts","fieldPath":"payload","indexes":[]}]}

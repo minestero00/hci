@@ -14,7 +14,11 @@
     "check": "npm test && npm run build"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "fake-indexeddb": "^6.2.7",
     "happy-dom": "^21.0.4"
+  },
+  "dependencies": {
+    "firebase": "^13.2.0"
   }
 }

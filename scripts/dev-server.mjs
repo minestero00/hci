@@ -2,6 +2,8 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {build} from 'esbuild';
+const sdk=(await build({entryPoints:[fileURLToPath(new URL('../client/firebase-sdk.mjs',import.meta.url))],bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,write:false})).outputFiles[0].contents;
 
 const root = resolve(fileURLToPath(new URL('../web/', import.meta.url)));
 const port = Number(process.env.PORT || 4173);
@@ -11,6 +13,7 @@ createServer(async (req, res) => {
     const url = new URL(req.url, `http://127.0.0.1:${port}`);
     let relative = decodeURIComponent(url.pathname).replace(/^\/hci(?=\/|$)/, '').replace(/^\/+/, '');
     if (!relative || relative.endsWith('/')) relative += 'index.html';
+    if(relative==='firebase-sdk.mjs'){res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-store'});res.end(req.method==='HEAD'?undefined:sdk);return;}
     const target = resolve(root, relative);
     if (!target.startsWith(root + sep) && target !== root) { res.writeHead(403); res.end('Forbidden'); return; }
     if (!(await stat(target)).isFile()) throw new Error('not a file');

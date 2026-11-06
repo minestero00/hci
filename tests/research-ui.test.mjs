@@ -123,3 +123,16 @@ test('grading shows progress, retains failed-save recovery focus and restores or
  rejectSave(Error('injected failure'));await until(()=>document.activeElement.id==='grade-edit-status','failed save focus');assert.match(document.getElementById('grade-edit-status').textContent,/확인하지 못했습니다/);assert.equal(document.querySelector('input[name=score]:checked').value,'2');
  ResearchStore.prototype.save=originalSave;submit(document,'grade-form');await until(()=>document.activeElement.value==='save','ordinary save focus');assert.match(document.getElementById('grade-edit-status').textContent,/저장된 채점/);assert.match(document.getElementById('research-message').textContent,/저장했습니다/);
 });
+
+test('cloud receipt validation requires the exact completed response and event manifest hash',async t=>{
+ const env=await domEnvironment(new URL('../web/research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
+ const {verifyCloudReceipt}=await import('../web/research.mjs?receipt-validation');
+ const {run}=fixture();const events=[{id:'event-a'},{id:'event-b'}];
+ const eventIdsHash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('event-a\nevent-b')))].map(v=>v.toString(16).padStart(2,'0')).join('');
+ const value={runId:run.id,eventCount:2,eventIdsHash,submissionCount:run.submissions.length,completedAt:run.finishedAt};
+ assert.equal(await verifyCloudReceipt(run,events,{payload:JSON.stringify(value)}),true);
+ for(const patch of [{runId:'other'},{eventCount:3},{submissionCount:0},{completedAt:'other'},{eventIdsHash:'wrong'}])assert.equal(await verifyCloudReceipt(run,events,{payload:JSON.stringify({...value,...patch})}),false);
+ assert.equal(await verifyCloudReceipt({...run,status:'in_progress'},events,{payload:JSON.stringify(value)}),false);
+ assert.equal(await verifyCloudReceipt(run,events,null),false);
+ assert.equal(document.getElementById('cloud-load').disabled,true);assert.ok(document.getElementById('cloud-login'));
+});

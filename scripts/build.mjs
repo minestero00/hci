@@ -2,6 +2,7 @@ import { readdir, mkdir, rm, copyFile, writeFile, readFile } from 'node:fs/promi
 import { resolve, join, extname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { build } from 'esbuild';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const source = resolve(root, 'web');
@@ -28,5 +29,6 @@ await copyDirectory(source, destination);
 for (const name of ['index.html', 'research.html', 'app.mjs', 'core.mjs', 'content.mjs', 'styles.css']) {
   await readFile(join(destination, name));
 }
+await build({entryPoints:[join(root,'client/firebase-sdk.mjs')],outfile:join(destination,'firebase-sdk.mjs'),bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true});count++;
 await writeFile(join(destination, '.nojekyll'), '');
 console.log(`Built ${count} static files in dist/. All module syntax checks passed.`);

@@ -44,7 +44,7 @@ test('workspace validates accessibly, retains source position, explains recordin
  document.querySelector('[data-action=resume]').click();await settled('update');assert.equal(document.querySelector(`input[value="${alternative}"]`).checked,true);
  document.querySelector('button[data-action=download]').click();document.querySelector('a[data-action=home]').click();assert.equal(document.getElementById('session-dialog'),null);assert.ok(document.getElementById('step-form'));await until(()=>env.blobs.length,'midrun export');
  const envelope=JSON.parse(await env.blobs.at(-1).text());assert.equal(validateEnvelope(envelope),true);
- assert.ok(envelope.events.some(e=>e.type==='recorder_started'&&e.data.uiVersion==='2026.11.07-ux5'));
+ assert.ok(envelope.events.some(e=>e.type==='recorder_started'&&e.data.uiVersion==='2026.11.07-ux6'));
  assert.ok(envelope.events.some(e=>e.type==='source_jump'));assert.ok(envelope.events.some(e=>e.type==='validation_error'));
  assert.ok(envelope.events.some(e=>e.type==='engagement_segment'&&e.data.reason==='export'));
  assert.ok(envelope.events.some(e=>e.type==='overlay_state'&&e.data.open===true));

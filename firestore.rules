@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function researcher(){return request.auth != null && request.auth.token.email_verified == true && request.auth.token.email == 'superriaco@gmail.com';}
+  function owner(){return request.auth != null && request.auth.uid == resource.data.ownerUid;}
+  function validRun(){return request.auth != null && request.resource.data.keys().hasOnly(['ownerUid','payload','updatedAt']) && request.resource.data.ownerUid == request.auth.uid && request.resource.data.payload is string && request.resource.data.payload.size() < 400000 && request.resource.data.updatedAt is string;}
+  match /runs/{runId} {
+   allow read: if researcher() || owner();
+   allow create: if validRun();
+   allow update: if owner() && validRun();
+   allow delete: if false;
+   match /{kind}/{id} {
+    function runOwner(){return request.auth != null && get(/databases/$(database)/documents/runs/$(runId)).data.ownerUid == request.auth.uid;}
+    function validItem(){return request.resource.data.keys().hasOnly(['ownerUid','payload','createdAt']) && request.resource.data.ownerUid == request.auth.uid && request.resource.data.payload is string && request.resource.data.payload.size() < 240000 && request.resource.data.createdAt is string;}
+    allow read: if researcher() || runOwner();
+    allow create: if (kind == 'chunks' || (kind == 'receipts' && id == 'final')) && runOwner() && validItem();
+    allow update: if runOwner() && validItem() && ((kind == 'chunks' && request.resource.data == resource.data) || (kind == 'receipts' && id == 'final'));
+    allow delete: if false;
+   }
+  }
+ }
+}

@@ -3,11 +3,21 @@ import { createRun, stepInfo, submitStep, validateRun, parseInvitation, makeEnve
 import { BrowserStore } from './storage.mjs';
 import { Recorder } from './recorder.mjs';
 import { fitWorkspace } from './workspace-layout.mjs';
+import { CloudSync,cloudEnabled,hasCloudConsent,markCloudConsent } from './cloud-sync.mjs';
 
 const ACTIVE = 'hci-workspace.activeRun';
 const app = document.getElementById('app');
 const store = new BrowserStore();
 const tabId = crypto.randomUUID();
+let cloudState={state:'idle'};
+const cloud=cloudEnabled()?new CloudSync({store,onStatus:state=>{if(state.runId!==run?.id)return;cloudState=state;paintCloudStatus();}}):null;
+function cloudText(){return ({idle:'서버 전송 대기',sending:'서버 전송 중…',synced:'진행 기록 서버 수신 확인',complete:'최종 응답 서버 수신 확인',error:'서버 전송 확인 필요'})[cloudState.state]||'서버 전송 대기';}
+function paintCloudStatus(){for(const el of document.querySelectorAll('[data-cloud-status]'))el.textContent=cloudText();const retry=document.querySelector('[data-action=cloud-submit]');if(retry)retry.disabled=cloudState.state==='sending';}
+async function submitCloud(){
+ if(!cloud||!run||!hasLock||busy||exporting)return;
+ try{await saveDraftNow();await writeQueue;recorder?.checkpoint('cloud_submit');await recorder?.flush();cloud.update(run);await cloud.sync({final:run.status==='completed'});}catch{cloudState={state:'error'};}paintCloudStatus();
+}
+
 const icons = {
   brand:'<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 5h5v14H5zM14 5h5v8h-5zM14 17h5v2h-5z" fill="currentColor"/></svg>',
   document:'<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h7l4 4v14H6V3h1Z" stroke="currentColor" stroke-width="1.5"/><path d="M14 3v5h4M9 12h6M9 16h6" stroke="currentColor" stroke-width="1.5"/></svg>',
@@ -33,7 +43,7 @@ const taskFor = id => TASKS.find(task=>task.id===id);
 const draftKey = info => [info.phase,info.taskId||'',info.updateId||''].join(':');
 const valuesFor = info => run?.draft?.key===draftKey(info) ? run.draft.values : {};
 const button = (label,attrs='',secondary=false) => `<button class="button${secondary?' secondary':''}" ${attrs}>${label}</button>`;
-const storageNote = () => store.mode==='memory'?'현재 탭에 임시 보관됩니다. 창을 닫기 전에 파일로 보관해 주세요.':'응답은 이 기기의 브라우저에 보관됩니다.';
+const storageNote = () => cloud?(store.mode==='memory'?'응답과 행동 기록은 현재 탭에 임시 보관하고 연구팀 서버로 전송합니다.':'응답과 행동 기록은 이 브라우저에 보관하고 연구팀 서버로 전송합니다.'):store.mode==='memory'?'현재 탭에 임시 보관됩니다. 창을 닫기 전에 파일로 보관해 주세요.':'응답은 이 기기의 브라우저에 보관됩니다.';
 const footer = () => `<footer class="site-footer"><div class="shell"><span>판단 워크스페이스</span><span>${storageNote()}</span></div></footer>`;
 const mobile = () => `<section class="mobile-gate shell"><div class="card desktop-notice">${icons.screen}<div><div class="eyebrow">PC 화면 안내</div><h1>넓은 PC 창에서 이어가세요.</h1><p class="muted">자료를 나란히 비교하는 과제입니다. 창 너비를 900px 이상으로 넓히거나 PC 브라우저에서 열어 주세요.</p><p class="muted">${store.mode==='memory'?'현재 탭에만 임시 보관 중입니다. 새로고침하거나 닫기 전에 파일로 보관해 주세요.':'작성한 응답은 현재 기기의 브라우저에 보관됩니다. 다른 기기로 자동 이동되지는 않습니다.'}</p><p id="mobile-storage-warning" class="notice" ${saveError||logError?'':'hidden'}>${esc(saveError||logError)}</p>${run?button('현재 기록 다운로드','type="button" data-action="download" data-track="narrow-recovery"'):savedRun?button('보관 기록 다운로드','type="button" data-action="download-saved"'):''}</div></div></section>`;
 
@@ -42,7 +52,7 @@ function header(){
   const help=active?button('도움말','type="button" data-action="help"',true).replace('class="button secondary"','class="button ghost small"'):'';
   const download=run?button('기록 다운로드','type="button" data-action="download" data-track="download-record"',true).replace('class="button secondary"','class="button secondary small"'):'';
   const pause=active?button('잠시 나가기','type="button" data-action="home" data-track="pause-session"',true).replace('class="button secondary"','class="button ghost small"'):'';
-  return `<header class="site-header"><div class="shell"><a class="brand" href="./index.html" data-action="home" data-track="workspace-home"><span class="brand-mark">${icons.brand}</span><span>판단 워크스페이스</span></a><div class="header-meta"><span id="save-status" role="status" aria-live="polite">${statusText()}</span>${help}${download}${pause}</div></div></header>`;
+  return `<header class="site-header"><div class="shell"><a class="brand" href="./index.html" data-action="home" data-track="workspace-home"><span class="brand-mark">${icons.brand}</span><span>판단 워크스페이스</span></a><div class="header-meta"><span id="save-status" role="status" aria-live="polite">${statusText()}</span>${run&&cloud?'<span role="status" data-cloud-status>'+cloudText()+'</span>':''}${help}${download}${pause}</div></div></header>`;
 }
 
 function statusText(){
@@ -105,7 +115,7 @@ async function saveDraftNow(){
   if(draft.key!==draftKey(stepInfo(run)))return;
   const json=JSON.stringify(draft);
   if(json===lastDraftJSON)return;
-  run={...run,draft,updatedAt:new Date().toISOString()};
+  run={...run,draft,updatedAt:new Date().toISOString()};cloud?.update(run);
   recorder?.record('draft_revision',{field:draft.key,value:draft.values});
   try{await queueSave();lastDraftJSON=json;paintSaveStatus();}catch{}
 }
@@ -175,10 +185,12 @@ function showLocked(){
 }
 async function enterRun(candidate){
   validateRun(candidate);
+  if(cloud&&!hasCloudConsent(candidate.id)){if(!await sessionDialog('cloud-consent'))throw Error('서버 전송에 동의하지 않았습니다. 이전 기록은 파일로 보관할 수 있습니다.');markCloudConsent(candidate.id);}
   if(recorder){
     try{await recorder.stop();}
     catch(error){logError='저장 대기 기록이 남아 있습니다. 현재 기록을 다운로드한 뒤 다시 연결해 주세요.';paintSaveStatus();throw error;}
   }
+  cloud?.stop();cloudState={state:'idle'};
   run=clone(candidate);savedRun=null;
   const locked=await acquireSession(run.id);
   if(!locked){render();showLocked();return;}
@@ -191,7 +203,8 @@ async function enterRun(candidate){
   recorder.start(run);recorder.record('session_opened',{resumed:run.submissions.length>0});
   if(document.getElementById('locked-dialog'))recorder.overlay(true,'session-lock');
   try{await queueSave();}catch{}
-  render();
+  cloud?.start(run);cloud?.sync().catch(()=>{});
+  render();if(run.status==='completed'&&cloud)setTimeout(()=>submitCloud(),0);
 }
 
 function welcome(){
@@ -204,7 +217,7 @@ function welcome(){
     <section class="card journey-card"><h2>한 업무는 이렇게 진행됩니다.</h2><ol class="journey-list"><li><span>1</span><div><strong>자료 검토 · 실행안 선택</strong><p>제공된 자료를 확인하고 실행안을 선택합니다.</p></div></li><li><span>2</span><div><strong>부담 · 예상 점수 기록</strong><p>결정에 든 노력과 이후 수행의 예상 점수를 남깁니다.</p></div></li><li><span>3</span><div><strong>새 요청 두 개 · 인계 메모</strong><p>원자료와 새 요청을 확인하고 응답합니다. 모르면 그대로 표시할 수 있습니다.</p></div></li></ol><p class="journey-footnote">먼저 짧게 조작을 연습합니다. 제출한 응답은 수정할 수 없고, 진행 중 정답·점수는 표시되지 않습니다.</p></section></div>
     <section class="card start-card" aria-labelledby="start-title"><div class="start-state"><span class="status-dot"></span>${invitation?'참여 링크 확인됨':'팀 자유 체험'}</div><h2 id="start-title">${invitation?'참여 시작':'직접 체험해 보세요.'}</h2><p class="muted">${invitation?'제공받은 익명 코드로 진행합니다.':'팀 체험 기록은 본 실험 자료와 구분됩니다.'}</p>${invitationError?`<div class="error" role="alert">${esc(invitationError)}</div>`:''}
     <form id="start-form" class="start-form" novalidate data-region="start-form"><label class="field"><span>익명 참가자 코드</span><input type="text" name="participantCode" data-track="participant-code" maxlength="40" autocomplete="off" spellcheck="false" value="${esc(invitation?.participantCode||'')}" placeholder="예: TEAM01" ${invitation?'readonly':''} required aria-describedby="code-hint"><span id="code-hint" class="hint">이름·학번·연락처는 입력하지 마세요.</span></label>
-    <div class="recording-note"><strong>시작 전에 확인해 주세요.</strong><ul><li>동의하고 시작한 뒤 응답·수정 이력과 이 페이지 안의 클릭, 자료 노출, 스크롤, 포인터·키보드 조작 유형 등을 기록합니다.</li><li>완료 후 JSON을 내려받아 연구팀에 전달합니다. 서버 자동 제출은 없습니다.</li><li>이 기록은 ${store.mode==='memory'?'현재 탭에만 임시 보관됩니다':'이 기기의 브라우저에 보관됩니다'}. 언제든 중단할 수 있습니다.</li></ul><button class="inline-link" type="button" data-action="privacy" data-track="recording-details">자세한 기록 안내</button></div>
+    <div class="recording-note"><strong>시작 전에 확인해 주세요.</strong><ul><li>동의하고 시작한 뒤 응답·수정 이력과 이 페이지 안의 클릭, 자료 노출, 스크롤, 포인터·키보드 조작 유형 등을 기록합니다.</li><li>${cloud?'응답과 행동 기록을 연구팀 Firebase 서버로 자동 전송합니다. 완료 화면에서 서버 수신 상태를 확인해 주세요.':'완료 후 JSON을 내려받아 연구팀에 전달합니다. 서버 자동 제출은 없습니다.'}</li><li>이 기록은 ${store.mode==='memory'?'현재 탭에만 임시 보관됩니다':'이 기기의 브라우저에 보관됩니다'}. 언제든 중단할 수 있습니다.</li></ul><button class="inline-link" type="button" data-action="privacy" data-track="recording-details">자세한 기록 안내</button></div>
     <label class="check-line"><input type="checkbox" name="consent" required data-track="participation-consent"><span>진행 방식과 기록 안내를 확인했고, 참여에 동의합니다.</span></label><div id="form-error" class="error" role="alert" tabindex="-1"></div>${button('동의하고 연습 시작 →','type="submit" data-track="start-session"'+(invitationError?' disabled':''))}<p class="hint start-footnote">${store.mode==='memory'?'새로고침하거나 창을 닫기 전에 응답 파일을 내려받아 주세요.':'완료까지 같은 기기·브라우저를 사용해 주세요.'}</p></form></section></div></main>`;
 }
 
@@ -270,7 +283,7 @@ function completed(){
   const requested=exportRequests.get(run.id);
   const finalRequested=requested?.status==='completed'&&requested.submissions===run.submissions.length;
   const finished=run.finishedAt?new Date(run.finishedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}):'';
-  return `<main id="main" tabindex="-1" class="completed-wrap desktop-content">${storageWarning()}<section class="card completion-card"><div class="done-emblem">${icons.check}</div><div class="eyebrow">응답 작성 완료</div><h1>세 가지 업무를 모두 마쳤습니다.</h1><p class="muted">응답 파일을 내려받은 뒤 연구 담당자에게 전달해 주세요.</p><div class="completion-summary"><div><span>익명 참가자 코드</span><strong>${esc(run.participantCode)}</strong></div><div><span>완료한 업무</span><strong>3개</strong></div><div><span>완료 시각</span><strong>${esc(finished)}</strong></div></div><ol class="delivery-steps"><li><span>1</span><div><strong>응답 파일을 다운로드하세요.</strong><p>아래 버튼을 누른 뒤 브라우저의 다운로드 목록에서 파일을 확인해 주세요.</p></div></li><li><span>2</span><div><strong>연구 담당자에게 파일을 전달하세요.</strong><p>팀에서 안내한 전달 방법을 사용해 주세요. 다운로드만으로 제출되지는 않습니다.</p></div></li></ol><div class="completion-next"><div class="actions">${button('응답 파일 다운로드','type="button" data-action="download"')}${button('시작 화면으로','type="button" data-action="finish-home"',true)}</div><p id="download-status" class="download-status" aria-live="polite">${finalRequested?'다운로드를 요청했습니다. 브라우저의 다운로드 목록에서 파일을 확인해 주세요.':'응답·수정 이력·행동 로그가 하나의 JSON 파일에 포함됩니다.'}</p></div>${run.mode==='demo'?'<p class="muted" style="font-size:12px;margin-top:25px">이 실행은 팀 자유 체험으로 표시됩니다. 배정 링크로 진행한 파일럿 자료와 구분됩니다.</p>':''}</section></main>`;
+  return `<main id="main" tabindex="-1" class="completed-wrap desktop-content">${storageWarning()}<section class="card completion-card"><div class="done-emblem">${icons.check}</div><div class="eyebrow">응답 작성 완료</div><h1>세 가지 업무를 모두 마쳤습니다.</h1><p class="muted">${cloud?'서버 수신 상태를 확인해 주세요. 전송에 실패하면 다시 시도하거나 기록 파일을 보관해 주세요.':'응답 파일을 내려받은 뒤 연구 담당자에게 전달해 주세요.'}</p>${cloud?'<section class="notice info"><strong role="status" data-cloud-status>'+cloudText()+'</strong><p>서버 수신 확인이 표시되어야 제출이 확인된 상태입니다.</p><button class="button" type="button" data-action="cloud-submit">최종 응답 전송·수신 확인</button></section>':''}<div class="completion-summary"><div><span>익명 참가자 코드</span><strong>${esc(run.participantCode)}</strong></div><div><span>완료한 업무</span><strong>3개</strong></div><div><span>완료 시각</span><strong>${esc(finished)}</strong></div></div>${cloud?'':`<ol class="delivery-steps"><li><span>1</span><div><strong>응답 파일을 다운로드하세요.</strong><p>아래 버튼을 누른 뒤 브라우저의 다운로드 목록에서 파일을 확인해 주세요.</p></div></li><li><span>2</span><div><strong>연구 담당자에게 파일을 전달하세요.</strong><p>팀에서 안내한 전달 방법을 사용해 주세요. 다운로드만으로 제출되지는 않습니다.</p></div></li></ol>`}<div class="completion-next"><div class="actions">${button('응답 파일 다운로드','type="button" data-action="download"')}${button('시작 화면으로','type="button" data-action="finish-home"',true)}</div><p id="download-status" class="download-status" aria-live="polite">${finalRequested?'다운로드를 요청했습니다. 브라우저의 다운로드 목록에서 파일을 확인해 주세요.':'응답·수정 이력·행동 로그가 하나의 JSON 파일에 포함됩니다.'}</p></div>${run.mode==='demo'?'<p class="muted" style="font-size:12px;margin-top:25px">이 실행은 팀 자유 체험으로 표시됩니다. 배정 링크로 진행한 파일럿 자료와 구분됩니다.</p>':''}</section></main>`;
 }
 function render(){
   releaseWorkspaceLayout();
@@ -284,7 +297,7 @@ function render(){
   if(response){response.tabIndex=0;response.dataset.evaluation=String(['update','memo'].includes(info.phase));}
   bindForms();
   releaseWorkspaceLayout=fitWorkspace(app.querySelector('.workspace')||app,event=>recorder?.record('workspace_layout',event));
-  paintSaveStatus();
+  paintSaveStatus();paintCloudStatus();
   if(busy)app.querySelectorAll('button[type="submit"],[data-action="home"],[data-action="download"]').forEach(button=>{button.disabled=true;});
   if(run){
     recorder?.context(run);recorder?.observe(app);
@@ -319,7 +332,8 @@ function clearFieldErrors(form){
 }
 function sessionDialog(kind){
   const content={
-    privacy:{title:'무엇이 기록되나요?',body:`<p>응답과 답안 수정본, 클릭·선택 변경, 포인터·스크롤 표본, 자료가 화면에 노출된 구간, 탭·창 상태, 입력·수정·한글 조합 입력 유형을 기록합니다. 입력한 답안 본문은 응답과 수정 이력에 포함됩니다.</p><p>키보드의 모든 문자, 클립보드 내용, 선택한 원문, 다른 앱의 내용은 별도로 수집하지 않습니다. 화면 노출·조작 기록만으로 실제 읽기나 이해를 알 수는 없습니다.</p><p>${storageNote()} ${store.mode==='memory'?'새로고침하거나 닫기 전에 기록 파일을 내려받아 주세요.':'브라우저 데이터를 지우기 전에 기록 파일을 내려받아 주세요.'} 연구팀에 파일을 직접 전달하며, 이 사이트에서 자동 전송하지 않습니다.</p>`,confirm:'확인했습니다'},
+    'cloud-consent':{title:'이전 기록을 서버로 전송할까요?',body:'<p>이 기록은 이전에 이 브라우저에만 보관하던 응답입니다. 계속하면 기존 응답·수정 이력·행동 로그와 이후 기록을 연구팀 Firebase 서버(서울 리전)로 전송합니다.</p><p>동의하지 않으면 전송하지 않습니다. 시작 화면에서 이전 기록을 내려받아 보관할 수 있습니다.</p>',confirm:'동의하고 서버 전송',cancel:'전송하지 않기'},
+    privacy:{title:'무엇이 기록되나요?',body:`<p>응답과 답안 수정본, 클릭·선택 변경, 포인터·스크롤 표본, 자료가 화면에 노출된 구간, 탭·창 상태, 입력·수정·한글 조합 입력 유형을 기록합니다. 입력한 답안 본문은 응답과 수정 이력에 포함됩니다.</p><p>키보드의 모든 문자, 클립보드 내용, 선택한 원문, 다른 앱의 내용은 별도로 수집하지 않습니다. 화면 노출·조작 기록만으로 실제 읽기나 이해를 알 수는 없습니다.</p><p>${storageNote()} ${store.mode==='memory'?'새로고침하거나 닫기 전에 기록 파일을 내려받아 주세요.':'브라우저 데이터를 지우기 전에 기록 파일을 내려받아 주세요.'} ${cloud?'동의하고 진행한 응답과 행동 기록은 연구팀 Firebase 서버(서울 리전)로 전송합니다. 서버 수신 상태를 확인할 수 있고 JSON 보관도 가능합니다.':'연구팀에 파일을 직접 전달하며, 이 사이트에서 자동 전송하지 않습니다.'}</p>`,confirm:'확인했습니다'},
     help:{title:'진행 방법',body:'<ul><li>왼쪽 자료는 계속 확인할 수 있습니다. 자료 바로가기로 원하는 문서로 이동하세요.</li><li>오른쪽에서 현재 요청에 응답합니다. ‘현재 응답으로 이동’으로 바로 이동할 수 있습니다. 확정하기 전까지는 바꿀 수 있습니다.</li><li>새 요청은 매번 원래 상황에서 출발합니다. 다른 요청의 변경을 누적하지 않습니다.</li><li>인계 메모는 원래 업무를 기준으로 작성합니다.</li><li>시간 제한은 없습니다. 상단에서 현재 기록을 내려받거나 잠시 나갈 수 있습니다.</li></ul>',confirm:'이어서 진행'},
     pause:{title:'잠시 쉬었다 이어갈까요?',body:store.mode==='memory'?'<p>현재 기록은 이 탭에만 임시 보관됩니다. 시작 화면에서 다시 열 수 있지만, 새로고침하거나 창을 닫으면 사라질 수 있습니다.</p><p>창을 닫기 전에 기록 파일을 내려받아 보관해 주세요.</p>':'<p>현재 응답과 작성 중인 메모를 이 기기의 브라우저에 저장한 뒤 시작 화면으로 이동합니다. 같은 기기·브라우저에서 이어서 진행할 수 있습니다.</p><p>브라우저 데이터를 지우거나 기기를 바꾸기 전에는 기록 파일을 내려받아 보관해 주세요.</p>',confirm:store.mode==='memory'?'시작 화면으로':'저장하고 나가기',cancel:'계속 진행'},
     restart:{title:'새 체험을 시작할까요?',body:`<p>이전 실행 기록이 남아 있습니다. 새로 시작하면 시작 화면의 이어하기가 새 실행으로 바뀝니다. 필요한 이전 기록은 먼저 다운로드해 주세요.</p><p>${storageNote()}</p>`,confirm:'새 실행 시작',cancel:'돌아가기'}
@@ -379,7 +393,7 @@ function bindForms(){
     busy=true;start.setAttribute('aria-busy','true');start.querySelector('button[type=submit]').disabled=true;start.querySelector('button[type=submit]').textContent='연습 화면 준비 중…';
     try{
       const candidate=createRun({participantCode:code,condition:invitation?.condition||(crypto.getRandomValues(new Uint32Array(1))[0]%2?'assisted':'control'),mode:invitation?'pilot':'demo',order:invitation?.order,updateOrders:invitation?.updateOrders,invitationId:invitation?.id||null});
-      await enterRun(candidate);focusMain();
+      if(cloud)markCloudConsent(candidate.id);await enterRun(candidate);focusMain();
     }catch(error){showError(error.message||'실행을 시작하지 못했습니다.');}
     finally{busy=false;start.removeAttribute('aria-busy');const submit=document.querySelector('#start-form button[type=submit]');if(submit){submit.disabled=false;submit.textContent='동의하고 연습 시작 →';}app.querySelectorAll('button:disabled').forEach(button=>{if(!invitationError)button.disabled=false;});}
   });
@@ -434,10 +448,10 @@ function bindForms(){
       recorder?.record('step_submitted',{phase:info.phase,taskId:info.taskId,updateId:info.updateId});
       clearDraftTimers();
       await queueSave(next);
-      run=next;recorder?.context(run);
+      run=next;cloud?.update(run);recorder?.context(run);
       recorder?.record('step_entered',{phase:stepInfo(run).phase});
       try{await recorder?.flush();}catch{logError='응답은 저장됐지만 일부 행동 기록은 저장 대기 중입니다. 창을 닫기 전 기록을 다운로드해 주세요.';}
-      render();focusMain({response:info.phase!=='practice'});
+      render();focusMain({response:info.phase!=='practice'});if(run.status==='completed'&&cloud)setTimeout(()=>submitCloud(),0);
     }catch(error){form.inert=false;showError(error.message||'응답을 확정하지 못했습니다. 다시 시도해 주세요.');}
     finally{busy=false;form.inert=false;form.removeAttribute('aria-busy');if(submitButton.isConnected)submitButton.textContent=submitLabel;app.querySelectorAll('button:disabled').forEach(button=>{button.disabled=false;});}
   });
@@ -501,7 +515,7 @@ async function goHome(){
       logError='일부 행동 기록을 저장하지 못해 시작 화면으로 이동하지 않았습니다. 현재 기록을 다운로드해 보관하거나 저장이 복구된 뒤 다시 시도해 주세요.';
       paintSaveStatus();showError(logError);return;
     }
-    savedRun=run;run=null;recorder=null;unlockSession();clearDraftTimers();app.inert=false;
+    cloud?.update(run);cloud?.sync().catch(()=>{});cloud?.stop();savedRun=run;run=null;recorder=null;unlockSession();clearDraftTimers();app.inert=false;
     document.getElementById('locked-dialog')?.remove();render();focusMain();
   }finally{busy=false;enableSessionButtons();}
 }
@@ -527,6 +541,7 @@ document.addEventListener('click',async event=>{
     target.scrollIntoView?.({block:'start',behavior:'instant'});heading?.focus({preventScroll:true});
     recorder?.record('source_jump',{sourceId:control.dataset.sourceTarget,from:'source-shortcuts'});return;
   }
+  if(action==='cloud-submit'){await submitCloud();return;}
   if(action==='download'){await downloadRun();return;}
   if(action==='download-saved'){await downloadRun(savedRun);return;}
   if(action==='resume'){if(busy||exporting)return;busy=true;try{await enterRun(savedRun);focusMain();}catch(error){showError(error.message);}finally{busy=false;enableSessionButtons();}return;}
@@ -546,9 +561,10 @@ document.addEventListener('click',async event=>{
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='hidden'){saveDraftNow();recorder?.flush().catch(()=>{});}
 });
+window.addEventListener('online',()=>{if(cloud&&run)submitCloud();});
 window.addEventListener('beforeunload',event=>{
   const completedBackup=run?.status==='completed'&&exportRequests.get(run.id)?.status==='completed';
-  if(run&&(composing||saving||saveError||logError||(store.mode==='memory'&&!completedBackup)||(latestDraft&&JSON.stringify(latestDraft)!==lastDraftJSON))){event.preventDefault();event.returnValue='';}
+  if(run&&((cloud&&run.status==='completed'&&cloudState.state!=='complete')||composing||saving||saveError||logError||(store.mode==='memory'&&!completedBackup)||(latestDraft&&JSON.stringify(latestDraft)!==lastDraftJSON))){event.preventDefault();event.returnValue='';}
   if(latestDraft&&!composing)saveDraftNow();
   recorder?.flush().catch(()=>{});
 });
