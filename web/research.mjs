@@ -15,7 +15,8 @@ const COLLECTION_PAGE_SIZE=20;
 let timelineType = 'all', timelineTask = 'all', timelinePage = 0, readingFiles = false, gradingBusy = false, invitationBusy = false;
 let persistenceFailed=false;
 let cloudSdk,cloudAuth,cloudDb,cloudBusy=false;
-const RESEARCH_EMAIL='superriaco@gmail.com';
+const RESEARCH_EMAILS=['superriaco@gmail.com','tigers0214@gmail.com','slightsmille@gmail.com'];
+export const isResearcher=user=>Boolean(user?.emailVerified&&RESEARCH_EMAILS.includes(user.email?.toLowerCase()));
 const phaseNames = { practice:'조작 연습', decision:'실행안 판단', estimate:'자기평가', update:'새 요청', memo:'인계 메모', done:'완료' };
 const duration = value => value === null || value === undefined ? '기록 없음' : value < 1000 ? `${Math.round(value)}ms` : value < 60000 ? `${(value/1000).toFixed(1)}초` : `${Math.floor(value/60000)}분 ${Math.round(value%60000/1000)}초`;
 const eventNames={click:'클릭',double_click:'두 번 클릭',context_menu:'우클릭 메뉴',pointer_move:'포인터 표본',pointer_down:'포인터 누름',hover_end:'포인터 머문 구간',scroll:'스크롤 표본',scroll_end:'스크롤 구간',control_change:'선택 변경',field_session:'입력 구간',input_started:'입력 시작',input_action:'입력 유형',composition_start:'조합 입력 시작',composition_end:'조합 입력 종료',paste:'붙여넣기',copy:'복사',cut:'잘라내기',selection:'텍스트 선택',focus_in:'요소 포커스 진입',focus_out:'요소 포커스 이탈',key_navigation:'키보드 탐색',key_action:'키보드 조작',visibility:'탭 표시 상태',window_focus:'창 포커스 진입',window_blur:'창 포커스 이탈',source_viewport:'자료 교차 비율',source_exposure_start:'자료 노출 시작',source_exposure_end:'자료 노출 종료',engagement_segment:'관찰 시간 구간',step_submitted:'응답 확정',step_entered:'단계 진입',draft_revision:'초안 수정',session_opened:'진행 시작·재개',recorder_started:'기록 시작',recorder_stopped:'기록 종료',heartbeat:'주기 상태',overlay_state:'대화상자 가림',dialog_opened:'안내 열기',dialog_closed:'안내 닫기',export_requested:'파일 요청',export_warning:'파일 복구 경고',export_failed:'파일 생성 실패',storage_failure:'행동 저장 실패',storage_recovered:'저장 복구',response_storage_error:'응답 저장 실패',source_jump:'자료 바로가기',answer_jump:'응답 바로가기',pane_focus_requested:'작업 영역 이동',workspace_presented:'작업 화면 표시',workspace_layout:'작업 영역 배치',validation_error:'응답 확인 필요',validation_invalid:'필수 입력 오류'};
@@ -355,7 +356,7 @@ async function connectCloud(){
   const [sdk,config]=await Promise.all([import('./firebase-sdk.mjs'),import('./cloud-config.mjs')]);
   const app=sdk.initializeApp(config.firebaseConfig,'hci-research');cloudAuth=sdk.getAuth(app);cloudDb=sdk.getFirestore(app);cloudSdk=sdk;
   sdk.onAuthStateChanged(cloudAuth,user=>{
-    const allowed=user?.emailVerified&&user.email?.toLowerCase()===RESEARCH_EMAIL;
+    const allowed=isResearcher(user);
     $('cloud-status').textContent=user?(allowed?'연구자 로그인됨 · 서버 자료를 가져올 수 있습니다.':'이 계정은 연구자 조회 권한이 없습니다.'):'연구자 로그인이 필요합니다.';
     $('cloud-load').disabled=!allowed||cloudBusy;$('cloud-login').hidden=Boolean(user);$('cloud-logout').hidden=!user;
   });
@@ -365,7 +366,7 @@ async function cloudAction(operation){
  cloudBusy=true;$('cloud-login').disabled=true;$('cloud-load').disabled=true;$('cloud-logout').disabled=true;
  try{await connectCloud();await operation();}
  catch(error){$('cloud-status').textContent='서버 연결을 완료하지 못했습니다. 로그인 계정·인터넷 연결을 확인하고 다시 시도해 주세요.';message(`서버 조회 실패: ${error.code||error.message}`,true);}
- finally{cloudBusy=false;$('cloud-login').disabled=false;$('cloud-logout').disabled=false;const user=cloudAuth?.currentUser;$('cloud-load').disabled=!(user?.emailVerified&&user.email?.toLowerCase()===RESEARCH_EMAIL);}
+ finally{cloudBusy=false;$('cloud-login').disabled=false;$('cloud-logout').disabled=false;const user=cloudAuth?.currentUser;$('cloud-load').disabled=!(isResearcher(user));}
 }
 function bindCloud(){
  $('cloud-login').onclick=()=>cloudAction(()=>cloudSdk.signInWithPopup(cloudAuth,new cloudSdk.GoogleAuthProvider()));
@@ -373,7 +374,7 @@ function bindCloud(){
  $('cloud-load').onclick=()=>cloudAction(loadCloudRecords);
 }
 async function loadCloudRecords(){
- if(!cloudAuth.currentUser?.emailVerified||cloudAuth.currentUser.email?.toLowerCase()!==RESEARCH_EMAIL)throw Error('연구자 계정으로 로그인해 주세요.');
+ if(!isResearcher(cloudAuth.currentUser))throw Error('연구자 계정으로 로그인해 주세요.');
  $('cloud-status').textContent='서버 응답과 행동 기록을 확인하고 있습니다…';
  const runs=await cloudSdk.getDocs(cloudSdk.collection(cloudDb,'runs'));
  const notices=[];let added=0,duplicates=0,conflicts=0,incomplete=0;

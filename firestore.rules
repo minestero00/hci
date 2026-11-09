@@ -1,7 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
  match /databases/{database}/documents {
-  function researcher(){return request.auth != null && request.auth.token.email_verified == true && request.auth.token.email == 'superriaco@gmail.com';}
+  function researcher(){return request.auth != null && request.auth.token.email_verified == true && request.auth.token.email in ['superriaco@gmail.com', 'tigers0214@gmail.com', 'slightsmille@gmail.com'];}
   function owner(){return request.auth != null && request.auth.uid == resource.data.ownerUid;}
   function validRun(){return request.auth != null && request.resource.data.keys().hasOnly(['ownerUid','payload','updatedAt']) && request.resource.data.ownerUid == request.auth.uid && request.resource.data.payload is string && request.resource.data.payload.size() < 400000 && request.resource.data.updatedAt is string;}
   match /runs/{runId} {

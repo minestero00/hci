@@ -136,3 +136,14 @@ test('cloud receipt validation requires the exact completed response and event m
  assert.equal(await verifyCloudReceipt(run,events,null),false);
  assert.equal(document.getElementById('cloud-load').disabled,true);assert.ok(document.getElementById('cloud-login'));
 });
+
+test('research access allows only verified accounts on the researcher list',async t=>{
+ const env=await domEnvironment(new URL('../web/research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
+ const {isResearcher}=await import('../web/research.mjs?research-access');
+ for(const email of ['superriaco@gmail.com','tigers0214@gmail.com','slightsmille@gmail.com']){
+  assert.equal(isResearcher({email,emailVerified:true}),true);
+  assert.equal(isResearcher({email,emailVerified:false}),false);
+ }
+ assert.equal(isResearcher({email:'TIGERS0214@gmail.com',emailVerified:true}),true);
+ for(const user of [null,{}, {email:'other@gmail.com',emailVerified:true}, {email:'tigers0214@gmail.com.evil.test',emailVerified:true}])assert.equal(isResearcher(user),false);
+});
