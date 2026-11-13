@@ -1,9 +1,9 @@
 {
   "name": "hci-decision-workspace",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "private": true,
   "type": "module",
-  "description": "PC browser pilot for decision support and independent performance",
+  "description": "CRT decision support, independent application and calibration study",
   "engines": {
     "node": ">=22"
   },
@@ -11,9 +11,11 @@
     "dev": "node scripts/dev-server.mjs",
     "build": "node scripts/build.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "npm test && npm run build"
+    "check": "npm test && npm run build",
+    "test:allocation": "firebase emulators:exec --only firestore --project demo-hci-crt --config firebase.emulator.json \"node --test tests/crt-firestore.emulator.mjs\""
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
     "esbuild": "^0.28.2",
     "fake-indexeddb": "^6.2.7",
     "happy-dom": "^21.0.4"

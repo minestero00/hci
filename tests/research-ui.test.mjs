@@ -20,7 +20,7 @@ function upload(env,id,value,name='record.json'){
 }
 const settled=()=>until(()=>document.getElementById('research-save')?.textContent==='이 브라우저에 저장됨','research save');
 test('research DOM imports records, grades independently, merges packets and exports eligible CSV',async t=>{
- const env=await domEnvironment(new URL('../web/research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
+ const env=await domEnvironment(new URL('../web/legacy-v3-research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
  await import('../web/research.mjs?dom-research');
  document.querySelector('[data-view=grade]').click();assert.equal(document.getElementById('new-packet').disabled,true);assert.match(document.getElementById('research-view').textContent,/채점할 메모가 없습니다/);document.querySelector('[data-view=collect]').click();
  const original=fixture();upload(env,'research-files',original);
@@ -56,7 +56,7 @@ test('research DOM imports records, grades independently, merges packets and exp
 });
 
 test('research workflow filters records, explores bounded telemetry and advances independent grading accessibly',async t=>{
- const env=await domEnvironment(new URL('../web/research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
+ const env=await domEnvironment(new URL('../web/legacy-v3-research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
  await import('../web/research.mjs?behavior-research');
  const original=fixture(),pageId=crypto.randomUUID(),taskId=original.run.assignment.order[0];
  const row=(type,data,sequence)=>({id:crypto.randomUUID(),runId:original.run.id,pageId,sequence,at:new Date(Date.parse(original.run.startedAt)+sequence*100).toISOString(),monotonicMs:sequence*100,phase:'decision',taskId,updateId:null,type,data:{telemetryVersion:2,...data}});
@@ -89,7 +89,7 @@ test('research workflow filters records, explores bounded telemetry and advances
 
 
 test('invitation creation preserves actionable storage failure and downloadable recovery',async t=>{
- const env=await domEnvironment(new URL('../web/research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
+ const env=await domEnvironment(new URL('../web/legacy-v3-research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
  const originalSave=ResearchStore.prototype.save;t.after(()=>{ResearchStore.prototype.save=originalSave;});
  await import('../web/research.mjs?failed-research-save');
  ResearchStore.prototype.save=async()=>{throw Error('저장 실패 주입');};
@@ -100,7 +100,7 @@ test('invitation creation preserves actionable storage failure and downloadable 
 });
 
 test('research collection paginates without losing records and exposes reset and export scope',async t=>{
- const env=await domEnvironment(new URL('../web/research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
+ const env=await domEnvironment(new URL('../web/legacy-v3-research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
  await import('../web/research.mjs?collection-pages');
  assert.ok(document.getElementById('open-collection-files'));
  const envelopes=Array.from({length:25},(_,i)=>makeEnvelope(createRun({participantCode:`PAGE${String(i).padStart(2,'0')}`,condition:'control',mode:i===24?'demo':'pilot'}),[]));
@@ -114,7 +114,7 @@ test('research collection paginates without losing records and exposes reset and
 });
 
 test('grading shows progress, retains failed-save recovery focus and restores ordinary save focus',async t=>{
- const env=await domEnvironment(new URL('../web/research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
+ const env=await domEnvironment(new URL('../web/legacy-v3-research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
  const originalSave=ResearchStore.prototype.save;t.after(()=>{ResearchStore.prototype.save=originalSave;});
  await import('../web/research.mjs?grade-save-focus');upload(env,'research-files',fixture());await until(()=>document.querySelector('.inspect-run'),'record');
  document.querySelector('[data-view=grade]').click();document.getElementById('new-packet').click();await until(()=>document.getElementById('grade-form'),'grading');
@@ -125,7 +125,7 @@ test('grading shows progress, retains failed-save recovery focus and restores or
 });
 
 test('cloud receipt validation requires the exact completed response and event manifest hash',async t=>{
- const env=await domEnvironment(new URL('../web/research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
+ const env=await domEnvironment(new URL('../web/legacy-v3-research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
  const {verifyCloudReceipt}=await import('../web/research.mjs?receipt-validation');
  const {run}=fixture();const events=[{id:'event-a'},{id:'event-b'}];
  const eventIdsHash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('event-a\nevent-b')))].map(v=>v.toString(16).padStart(2,'0')).join('');
@@ -138,7 +138,7 @@ test('cloud receipt validation requires the exact completed response and event m
 });
 
 test('research access allows only verified accounts on the researcher list',async t=>{
- const env=await domEnvironment(new URL('../web/research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
+ const env=await domEnvironment(new URL('../web/legacy-v3-research.html',import.meta.url),'https://example.test/hci/research.html');t.after(()=>env.cleanup());
  const {isResearcher}=await import('../web/research.mjs?research-access');
  for(const email of ['superriaco@gmail.com','tigers0214@gmail.com','slightsmille@gmail.com']){
   assert.equal(isResearcher({email,emailVerified:true}),true);

@@ -5,7 +5,7 @@ import { BrowserStore } from '../web/storage.mjs';
 import { validateEnvelope } from '../web/core.mjs';
 
 test('workspace validates accessibly, retains source position, explains recording and resumes an unsubmitted answer',async t=>{
- const env=await domEnvironment(new URL('../web/index.html',import.meta.url));t.after(()=>env.cleanup());
+ const env=await domEnvironment(new URL('../web/legacy-v3.html',import.meta.url));t.after(()=>env.cleanup());
  await import('../web/app.mjs?workspace-ux');
  await until(()=>document.getElementById('start-form'),'onboarding');
  submit(document,'start-form');

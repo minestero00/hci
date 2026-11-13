@@ -9,9 +9,9 @@ const safe = (value,max=160) => String(value??'').slice(0,max);
 const editable = element => ['TEXTAREA','INPUT'].includes(element?.tagName) && !['radio','checkbox','button','submit','hidden'].includes(element.type);
 
 export class Recorder {
-  constructor({store,onStatus=()=>{},clock=now,idleAfterMs=IDLE_AFTER_MS} = {}) {
+  constructor({store,onStatus=()=>{},clock=now,idleAfterMs=IDLE_AFTER_MS, step=stepInfo} = {}) {
     if(!store)throw Error('기록 저장소가 필요합니다.');
-    this.store=store;this.onStatus=onStatus;this._now=clock;this.idleAfterMs=idleAfterMs;
+    this.step=step;this.store=store;this.onStatus=onStatus;this._now=clock;this.idleAfterMs=idleAfterMs;
     this.pageId=newId();this.sequence=0;this._queue=[];this._flushing=null;this._active=false;this._context=null;this._listeners=[];
     this._sources=new Map();this._observer=null;this._fields=new Map();this._controls=new Map();this._scrolls=new Map();this._scrollPositions=new WeakMap();
     this._hover=null;this._lastPointer=null;this._failureNoted=false;this._volumeNoted=false;this.lastSavedAt=null;
@@ -34,7 +34,7 @@ export class Recorder {
     return this;
   }
   context(run){
-    const info=stepInfo(run),next={runId:run.id,phase:info.phase,taskId:info.taskId,updateId:info.updateId};
+    const info=this.step(run),next={runId:run.id,phase:info.phase,taskId:info.taskId,updateId:info.updateId};
     const changed=this._context&&JSON.stringify(next)!==JSON.stringify(this._context);
     if(changed){
       this._checkpoint('stage_change');this._closeExposures('stage_change');this._endHover('stage_change');this._closeFields('stage_change');this._finishScrolls('stage_change');

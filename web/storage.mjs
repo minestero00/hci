@@ -28,7 +28,8 @@ function immutableHistory(existing, incoming) {
 }
 
 export class BrowserStore {
-  constructor() {
+  constructor({dbName = DB_NAME, validate = validateRun, envelope = makeEnvelope} = {}) {
+    this.dbName = dbName; this.validate = validate; this.envelope = envelope;
     this.mode = 'memory';
     this._db = null;
     this._runs = new Map();
@@ -43,7 +44,7 @@ export class BrowserStore {
     }
     try {
       this._db = await new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        const request = indexedDB.open(this.dbName, DB_VERSION);
         let settled=false;
         const timer = setTimeout(() => {settled=true;reject(storageError('브라우저 저장소 응답이 지연됩니다. 다른 파일럿 탭을 닫고 다시 열어 주세요.'));}, 8000);
         request.onupgradeneeded = () => {
@@ -78,7 +79,7 @@ export class BrowserStore {
     return current;
   }
   async saveRun(run) {
-    validateRun(run);
+    this.validate(run);
     const snapshot = clone(run);
     return this._write(async () => {
       if (this.mode === 'memory') {
@@ -108,7 +109,7 @@ export class BrowserStore {
       request.onerror=()=>reject(storageError('저장된 응답을 읽지 못했습니다.',request.error));
       tx.onabort=()=>reject(storageError('저장된 응답을 읽지 못했습니다.',tx.error));
     });
-    if (value) validateRun(value);
+    if (value) this.validate(value);
     return value;
   }
   async appendEvents(events) {
@@ -164,7 +165,7 @@ export class BrowserStore {
     const run=await this.getRun(id);
     if (!run) throw storageError('내보낼 실행 기록을 찾을 수 없습니다.');
     const events=await this.eventsForRun(id);
-    return makeEnvelope(run,events);
+    return this.envelope(run,events);
   }
   async close() {
     await this._writes.catch(()=>{});
