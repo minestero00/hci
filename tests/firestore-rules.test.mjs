@@ -37,7 +37,7 @@ test('live Firestore rules isolate anonymous owners and protect immutable chunks
   assert.equal((await request('PATCH',`runs/${runId}/receipts/final`,owner,chunk)).status,200,'owner final receipt path');
  }finally{
   // Delete only the synthetic run created above; user participant data is never selected.
-  const cleanup=spawnSync('firebase',['firestore:delete',`runs/${runId}`,'--recursive','--force','--project',project,'--non-interactive'],{encoding:'utf8',timeout:30000});
+  const cleanup=spawnSync('firebase',['firestore:delete',`runs/${runId}`,'--recursive','--force','--project',project,'--account',process.env.HCI_FIREBASE_ACCOUNT||'superriaco@gmail.com','--non-interactive'],{encoding:'utf8',timeout:30000});
   for(const user of users)await fetch(`${authBase}:delete?key=${firebaseConfig.apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idToken:user.idToken})});
   assert.equal(cleanup.status,0,'synthetic run cleanup completed');
  }
@@ -66,7 +66,7 @@ test('live CloudSync completes run, chunk and verified receipt roundtrip', {skip
   assert.equal(JSON.parse((await adapter.get(`runs/${run.id}`)).payload).participantCode,'CLOUD_RULES_SMOKE');
   assert.equal(JSON.parse((await adapter.get(`runs/${run.id}/receipts/final`)).payload).eventIdsHash,receipt.eventIdsHash);
  }finally{
-  sync.stop();const cleanup=spawnSync('firebase',['firestore:delete',`runs/${run.id}`,'--recursive','--force','--project',project,'--non-interactive'],{encoding:'utf8',timeout:30000});
+  sync.stop();const cleanup=spawnSync('firebase',['firestore:delete',`runs/${run.id}`,'--recursive','--force','--project',project,'--account',process.env.HCI_FIREBASE_ACCOUNT||'superriaco@gmail.com','--non-interactive'],{encoding:'utf8',timeout:30000});
   await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${firebaseConfig.apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idToken:user.idToken})});
   assert.equal(cleanup.status,0,'synthetic roundtrip cleanup');
  }
