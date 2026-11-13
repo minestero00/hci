@@ -312,3 +312,110 @@
     transition: none !important;
   }
 }
+
+/* Participant flow: one task at a time, with the original source always available. */
+.crt-header { padding: 14px max(24px, calc((100% - 1280px) / 2)); gap: 16px; }
+.crt-header strong { font-size: 18px; }
+.crt-header .header-caption { font-size: 14px; color: var(--crt-muted); }
+.crt-header .button { min-height: 44px; padding: 9px 14px; font-size: 14px; }
+.save-note { padding: 7px max(24px, calc((100% - 1280px) / 2)); min-height: 36px; }
+.crt-shell { margin: 24px auto; line-height: 1.65; }
+.crt-shell .intro { max-width: 1000px; }
+.crt-shell .intro h1 { font-size: clamp(25px, 2.6vw, 34px); margin-bottom: 12px; }
+.crt-shell .intro-lead { font-size: 18px; color: var(--crt-muted); max-width: 65ch; }
+.study-facts { display: flex; gap: 10px 20px; flex-wrap: wrap; font-size: 14px; color: var(--crt-muted); margin: 20px 0; }
+.intro-journey { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 0; margin: 24px 0; border-block: 1px solid var(--crt-line); }
+.intro-journey li { padding: 18px 16px; display: grid; gap: 5px; }
+.intro-journey li + li { border-left: 1px solid var(--crt-line); }
+.intro-journey span { font-size: 14px; color: var(--crt-muted); }
+.participation-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.crt-shell .participation-notes h2 { font-size: 17px; margin: 0 0 8px; }
+.crt-shell .participation-notes p { font-size: 15px; margin: 8px 0; }
+.crt-shell #start-form { border-top: 1px solid var(--crt-line); margin-top: 24px; padding-top: 4px; }
+.crt-shell #start-form .check-line { margin: 16px 0; }
+.study-progress { margin-bottom: 20px; }
+.study-progress ol { list-style: none; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 0 0 16px; padding: 0; gap: 8px; }
+.study-progress li { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 10px 12px; border-bottom: 2px solid var(--crt-line); font-size: 14px; color: var(--crt-muted); }
+.study-progress li > span:first-child { font-size: 12px; }
+.study-progress li[aria-current] { color: var(--crt-accent); border-color: var(--crt-accent); font-weight: 700; background: #eaf4f2; border-radius: 5px 5px 0 0; }
+.study-progress .is-complete { color: var(--crt-accent); }
+.step-heading { margin: 0; gap: 24px; }
+.crt-shell .step-heading p { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; margin: 0; }
+.step-heading strong { font-size: 16px; }
+.step-heading span { font-size: 13px; color: var(--crt-muted); }
+.step-heading progress { max-width: 320px; height: 6px; margin-left: auto; }
+.crt-grid { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 24px; }
+.crt-shell .card { padding: 24px; }
+.crt-shell h1 { font-size: 25px; margin-bottom: 14px; }
+.crt-shell .field { margin: 16px 0; }
+.crt-shell .field > span { font-size: 15px; }
+.crt-shell .phase-instruction { font-size: 15px; color: var(--crt-muted); margin: 0 0 16px; }
+.crt-shell .calculator h2 { font-size: 17px; margin-bottom: 8px; }
+.calculator-controls { display: flex; align-items: end; gap: 10px; }
+.crt-shell .calculator-controls .field { flex: 1; min-width: 0; margin: 0; gap: 6px; }
+.calculator-controls .button { flex: none; }
+.crt-shell .calculator .small { font-size: 12px; margin: 8px 0 0; }
+.calculator output { margin-top: 8px; min-height: 24px; font-size: 18px; }
+.estimate-fields { display: grid; gap: 12px; }
+.estimate-card { border: 1px solid var(--crt-line); border-radius: 8px; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr) 100px; gap: 16px; align-items: center; }
+.crt-shell .estimate-title { font-size: 14px; font-weight: 700; color: var(--crt-accent); margin: 0 0 5px; }
+.estimate-card label { display: block; font-size: 15px; line-height: 1.6; }
+.estimate-entry > div { display: flex; align-items: center; gap: 5px; }
+.estimate-entry small { font-size: 12px; color: var(--crt-muted); display: block; margin-top: 4px; }
+.crt-shell .estimate-entry input { width: 100%; min-width: 0; font-size: 21px; font-weight: 650; padding: 8px; text-align: center; }
+.crt-shell .scale-anchors { font-size: 12px; line-height: 1.6; color: var(--crt-muted); margin: 5px 0 0; }
+.crt-shell .practice-scoring { border-left: 3px solid var(--crt-accent); padding: 0 0 0 14px; margin: 18px 0; }
+.crt-shell .practice-scoring h2 { font-size: 15px; margin: 0 0 6px; }
+.crt-shell .scoring-guide p { font-size: 13px; line-height: 1.7; margin: 5px 0; }
+.scoring-reminder { margin: 12px 0; font-size: 14px; }
+.scoring-reminder summary { min-height: 44px; display: list-item; padding: 10px 0; color: var(--crt-accent); text-decoration: underline; text-underline-offset: 4px; }
+.submit-area { border-top: 1px solid var(--crt-line); margin-top: 20px; padding-top: 16px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.crt-shell .submit-area p { font-size: 13px; margin: 0; }
+.crt-shell .choice:has(input:checked), .crt-shell .burden-grid label:has(input:checked) { background: #eaf4f2; border-color: var(--crt-accent); box-shadow: inset 0 0 0 1px var(--crt-accent); }
+.crt-shell .button:active, .crt-header .button:active { box-shadow: inset 0 2px 4px #172b3a30; }
+.crt-shell h1:focus { outline: none; }
+.crt-shell .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.crt-shell .error-links { margin: 8px 0 0; padding-left: 22px; }
+.crt-shell .error-links a { color: inherit; display: inline-block; padding: 5px 0; }
+@media (max-width: 950px) {
+  .crt-grid { grid-template-columns: 1fr; }
+  .crt-shell { padding-inline: 20px; }
+  .crt-source { gap: 12px; }
+  .crt-header { padding: 12px 20px; }
+  .save-note { padding-inline: 20px; }
+  .study-progress li { padding-inline: 6px; gap: 5px; }
+  .participation-notes { grid-template-columns: 1fr; gap: 16px; }
+}
+@media (max-width: 600px) {
+  .crt-header .header-caption { display: none; }
+  .crt-header > .actions { margin: 0; gap: 8px; width: 100%; }
+  .crt-header .button { flex: 1; }
+  .crt-shell { margin-top: 16px; padding-inline: 14px; font-size: 16px; }
+  .crt-shell .card { padding: 18px; }
+  .intro-journey { grid-template-columns: 1fr; }
+  .intro-journey li { padding: 12px 0; }
+  .intro-journey li + li { border-left: 0; border-top: 1px solid var(--crt-line); }
+  .study-progress ol { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .study-progress li { font-size: 12px; padding: 7px; }
+  .step-heading { display: block; }
+  .step-heading progress { display: block; width: 100%; max-width: none; margin: 8px 0 0; }
+  .estimate-card { padding: 12px; grid-template-columns: minmax(0, 1fr) 84px; gap: 10px; }
+  .estimate-card label { font-size: 14px; }
+  .estimate-title { font-size: 13px; }
+  .crt-shell .submit-area .button { width: 100%; }
+}
+.study-progress ol { margin-bottom: 10px; }
+.study-progress li { padding-block: 8px; }
+.study-progress { margin-bottom: 16px; }
+.crt-shell .practice-scoring { margin-block: 12px; }
+.estimate-card { padding: 14px; }
+.crt-shell .submit-area p { max-width: 34ch; }
+.crt-shell { margin-top: 18px; }
+.estimate-card { padding: 12px; }
+.submit-area { margin-top: 14px; padding-top: 12px; }
+.task-shortcuts { display: none; }
+#response-title, #source-panel { scroll-margin-top: 16px; }
+@media (max-width: 950px) {
+  .task-shortcuts { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .task-shortcuts button { border: 1px solid var(--crt-line); background: #fff; color: var(--crt-accent); font: inherit; font-size: 14px; padding: 10px 14px; min-height: 44px; border-radius: 6px; flex: 1; }
+}

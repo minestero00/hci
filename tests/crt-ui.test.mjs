@@ -52,6 +52,7 @@ for (const condition of ["control", "assisted"])
     checked(d, "noExternal");
     submit(d, "start-form");
     await until(() => d.querySelector('[name="major"]'));
+    assert.match(d.querySelector('[aria-current="step"]').textContent, /시작 전/);
     for (const [k, v] of Object.entries({
       age: 23,
       gender: "undisclosed",
@@ -68,7 +69,25 @@ for (const condition of ["control", "assisted"])
     submit(d, "step-form");
     await until(() => d.querySelector('[name="confidence"]'));
     assert.match(d.getElementById("step-form").textContent, /채점 기준/);
+    assert.match(d.querySelector('[aria-current="step"]').textContent, /연습/);
+    assert.equal(d.querySelector('[name="confidence"]').value, "", "no anchored default estimate");
+    assert.equal(d.querySelector('[name="confidence"]').max, "100");
+    assert.equal(d.querySelector('[name="predApply"]').max, "6");
+    assert.match(d.querySelector('.scale-anchors').textContent, /0 = 전혀 확신하지 않음.*100 = 완전히 확신/);
+    submit(d, "step-form");
+    const firstError = d.querySelector('#error a');
+    assert.ok(firstError);
+    firstError.click();
+    assert.equal(d.activeElement.name, "confidence", "error summary focuses the relevant field");
+    assert.ok(d.activeElement.getAttribute("aria-describedby").split(" ").includes("anchor-confidence"));
+    assert.match(d.getElementById("anchor-confidence").textContent, /전혀 확신하지 않음/);
+    const originalHash = env.window.location.hash;
+    d.querySelector('[data-action="jump-response"]').click();
+    assert.equal(d.activeElement.id, "response-title");
+    assert.equal(env.window.location.hash, originalHash, "in-page navigation preserves manual invitation");
     value(d, "confidence", 75);
+    submit(d, "step-form");
+    assert.equal(d.querySelector('[name="confidence"]').getAttribute("aria-describedby"), "anchor-confidence range-confidence");
     value(d, "predApply", 4);
     submit(d, "step-form");
     await until(() => d.querySelector('[name="answer"]'));

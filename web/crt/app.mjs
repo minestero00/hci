@@ -81,7 +81,7 @@ function error(message) {
   }
 }
 function header() {
-  return `<header class="crt-header"><strong>판단 워크스페이스</strong><span>문제와 응답</span>${run ? `<div class="actions">${btn("현재 기록 다운로드", "download")}${btn("잠시 나가기", "pause")}</div>` : ""}</header><div id="save-state" role="status" class="save-note">${esc(persistenceError || "응답은 이 브라우저에 보관됩니다.")}</div>`;
+  return `<header class="crt-header"><strong>판단 워크스페이스</strong><span class="header-caption">문제와 응답</span>${run ? `<div class="actions"><button class="button secondary" type="button" data-action="download">현재 기록 다운로드</button><button class="button secondary" type="button" data-action="pause">잠시 나가기</button></div>` : ""}</header><div id="save-state" role="status" class="save-note">${esc(persistenceError || "응답은 이 브라우저에 보관됩니다.")}</div>`;
 }
 function status() {
   const e = document.getElementById("save-state");
@@ -209,7 +209,7 @@ async function openRun(candidate, { cloudConsent = false } = {}) {
   }
 }
 function welcome() {
-  return `<section class="card intro"><p class="eyebrow">참여 안내</p><h1>세 묶음의 문제에 답해 주세요.</h1><p>먼저 연습을 진행하고, 문제를 읽고 답을 고른 뒤 다음 수행을 예상합니다. 이후 바뀐 조건의 문제에 답과 풀이를 적습니다.</p><p>약 20~30분 · 시간 제한 없음 · PC 또는 넓은 화면의 태블릿</p><p>일부 참가자에게는 미리 작성하고 연구자가 검수한 정확한 AI 추천과 설명이 제공됩니다. 실시간 AI 대화는 사용하지 않습니다.</p><p>문제 원문과 화면의 계산기를 참고할 수 있습니다. 외부 AI·검색·별도 메모는 사용하지 마세요. 짧은 식과 계산이면 충분하며, 모르면 ‘모르겠음’을 선택할 수 있습니다.</p><p>응답·수정 이력, 클릭·스크롤·자료 노출·탭과 창 상태 등을 기록합니다. 모든 키의 문자나 클립보드 원문, 다른 앱의 내용은 별도로 수집하지 않습니다. ${cloudOn ? "동의 후 연구팀 Firebase 서버(서울)로 자동 전송합니다." : "로컬 체험에서는 브라우저에 보관하며 JSON을 연구팀에 전달합니다."} 언제든 중단할 수 있습니다.</p>${entryError ? `<p class="error">${esc(entryError)}</p>` : ""}
+  return `<section class="card intro"><p class="eyebrow">참여 안내</p><h1>읽고, 예상하고, 직접 풀어 주세요.</h1><p class="intro-lead">연습으로 응답 방식을 익힌 뒤 세 묶음의 문제를 진행합니다. 정답을 모를 때는 ‘모르겠음’을 선택할 수 있습니다.</p><div class="study-facts"><span>약 20~30분</span><span>시간 제한 없음</span><span>PC · 넓은 화면의 태블릿</span></div><ol class="intro-journey"><li><strong>연습</strong><span>응답과 채점 방식 익히기</span></li><li><strong>세 묶음의 문제</strong><span>답 선택 → 수행 예상 → 직접 풀기</span></li><li><strong>마지막 질문</strong><span>진행 경험 돌아보기</span></li></ol><div class="participation-notes"><section><h2>사용할 수 있는 자료</h2><p>문제 원문과 화면의 계산기를 참고하세요. 외부 AI·검색·별도 메모는 사용하지 마세요. 짧은 식과 계산이면 충분합니다.</p><p>일부 참가자에게는 미리 작성하고 연구자가 검수한 정확한 AI 추천·설명이 제공됩니다. 실시간 AI 대화는 사용하지 않습니다.</p></section><section><h2>기록과 보관</h2><p>응답·수정 이력, 클릭·스크롤·자료 노출·탭과 창 상태 등을 기록합니다. 모든 키의 문자, 클립보드 원문, 다른 앱의 내용은 별도로 수집하지 않습니다.</p><p>${cloudOn ? "동의 후 연구팀 Firebase 서버(서울)로 자동 전송합니다." : "로컬 체험에서는 브라우저에 보관하며 JSON을 연구팀에 전달합니다."} 언제든 중단할 수 있습니다.</p></section></div>${entryError ? `<p class="error">${esc(entryError)}</p>` : ""}
  ${saved ? `<section class="notice"><p>${esc(saved.participantCode)} · ${saved.status === "completed" ? "완료 기록" : "진행 중인 기록"}</p><div class="actions">${cloudOn && !hasCloudConsent(saved.id) ? '<label class="check-line"><input id="resume-cloud-consent" type="checkbox"><span>기존 응답·수정 이력·행동 기록과 이후 기록을 연구팀 Firebase 서버(서울)로 전송하는 데 동의합니다.</span></label>' : ""}${btn("이어서 열기", "resume")}${btn("보관된 기록 다운로드", "download-saved")}</div></section>` : ""}
  <form id="start-form">${invitation || batch ? "<p>연구자가 전달한 참여 링크로 진행합니다.</p>" : '<p class="notice">팀 체험입니다. 본 실험과 구분해 저장합니다.</p>'}${check("consent", "참여 방식과 기록·전송 안내를 확인했으며 참여에 동의합니다.")}${check("noExternal", "외부 AI·검색·별도 메모를 사용하지 않겠습니다.")}<div class="actions"><button class="button" ${entryError ? "disabled" : ""}>동의하고 시작</button></div></form><p class="small">이전 업무형 자료는 <a href="./legacy-v3.html">v3 복구 화면</a>에서 열 수 있습니다.</p></section>`;
 }
@@ -242,8 +242,11 @@ function preForm() {
   ])}${check("eligible", "19~29세 대학생이며, 이 과제 제작에 참여하거나 정답을 미리 보거나 이전 사람 파일럿에 참여하지 않았습니다.")}`;
 }
 function estimates(practice) {
-  return `<h1>다음 수행을 예상해 주세요.</h1><p>채점 기준: 적용 문항은 정답과 풀이가 모두 맞으면 2점, 정답만 있으면 1점입니다. 올바른 풀이의 단순 계산 실수는 문항별 기준에 따라 부분점수를 받을 수 있습니다. 틀린 풀이·무응답·모르겠음은 0점입니다. 설명 문항은 핵심 관계와 이유를 모두 설명하면 2점, 일부만 설명하면 1점, 틀리거나 모르겠음은 0점입니다. 길이와 문체는 채점하지 않습니다.</p><p>다음 단계에서는 AI 추천과 설명 없이 문제 원문과 계산기만 참고할 수 있습니다. ${practice ? "본 과제에서는 설명 예상 점수 칸이 하나 더 있습니다." : "연습에서 본 방식으로 채점합니다."}</p><div class="estimate-fields">${input("confidence", "1. 이와 같은 유형의 문제를, 조건이 바뀌어도 AI 없이 혼자 맞게 풀 수 있다고 얼마나 확신합니까? (0 = 전혀 확신하지 않음, 100 = 완전히 확신)", "number", 'min="0" max="100" step="1" required')}${input("predApply", "2. 조건이 바뀐 문제 3문항(6점 만점)에서 몇 점을 받을 것으로 예상합니까?", "number", 'min="0" max="6" step="1" required')}${practice ? "" : input("predExplain", "3. 원래 문제의 풀이를 설명하는 2문항(4점 만점)에서 몇 점을 받을 것으로 예상합니까?", "number", 'min="0" max="4" step="1" required')}</div><p>모든 칸에 정수를 입력해 주세요. 제출 후에는 수정하거나 AI 설명을 다시 볼 수 없습니다.</p>`;
+  const field = (name, title, question, maximum, unit) => `<section class="estimate-card"><div><p class="estimate-title">${title}</p><label for="estimate-${name}">${question}</label>${name === "confidence" ? '<p class="scale-anchors" id="anchor-confidence">0 = 전혀 확신하지 않음 · 100 = 완전히 확신</p>' : ""}</div><div class="estimate-entry"><div><input id="estimate-${name}" name="${name}" type="number" min="0" max="${maximum}" step="1" inputmode="numeric" aria-describedby="${name === "confidence" ? "anchor-confidence " : ""}range-${name}" data-help="${name === "confidence" ? "anchor-confidence " : ""}range-${name}" required><span aria-hidden="true">${unit}</span></div><small id="range-${name}">0~${maximum} ${unit} · 정수</small></div></section>`;
+  const rubric = `<div class="scoring-guide"><p><strong>적용 · 문항당 0~2점</strong> 정답과 풀이가 모두 맞으면 2점, 정답만 있으면 1점입니다. 올바른 풀이의 단순 계산 실수는 문항별 기준에 따라 부분점수를 받을 수 있습니다. 틀린 풀이·무응답·모르겠음은 0점입니다.</p>${practice ? "" : "<p><strong>설명 · 문항당 0~2점</strong> 핵심 관계와 이유를 모두 설명하면 2점, 일부만 설명하면 1점, 틀리거나 모르겠음은 0점입니다.</p>"}<p>길이와 문체는 채점하지 않습니다.</p></div>`;
+  return `<h1>다음 수행을 예상해 주세요.</h1><p class="phase-instruction">AI 추천·설명 없이 원문과 계산기만 보며 풀게 됩니다. 확신과 예상 점수는 서로 다른 질문입니다.</p>${practice ? `<section class="practice-scoring"><h2>먼저 채점 기준을 확인해 주세요</h2>${rubric}</section>` : ""}<div class="estimate-fields">${field("confidence", "1. 혼자 풀 수 있다는 확신", "이와 같은 유형의 문제를, 조건이 바뀌어도 AI 없이 혼자 맞게 풀 수 있다고 얼마나 확신합니까?", 100, "")}${field("predApply", "2. 적용 문제의 예상 점수", "조건이 바뀐 문제 3문항(6점 만점)에서 몇 점을 받을 것으로 예상합니까?", 6, "점")}${practice ? "" : field("predExplain", "3. 설명 문제의 예상 점수", "원래 문제의 풀이를 설명하는 2문항(4점 만점)에서 몇 점을 받을 것으로 예상합니까?", 4, "점")}</div>${practice ? '<p class="small">본 과제에는 설명 예상 점수 칸이 하나 더 있습니다.</p>' : `<details class="scoring-reminder"><summary>채점 기준 다시 보기</summary>${rubric}</details>`}`;
 }
+
 function postForm() {
   const pre = responses(run).pre;
   return `<h1>마지막 질문</h1>${textarea("used", "답을 고를 때 어떤 자료나 설명을 주로 이용했나요?")}${textarea("predictionBasis", "예상 점수를 정할 때 무엇을 기준으로 했나요?")}${textarea("strategy", "기억한 설명과 문제 원문을 각각 어떻게 활용했나요?")}${textarea("transfer", "뒤 묶음으로 갈수록 문제를 푸는 방식이 달라졌나요?")}${select(
@@ -275,7 +278,7 @@ function source(task, step) {
     ["decision", "burden"].includes(step.phase) &&
     task.id !== "practice" &&
     run.assignment.support[task.id];
-  return `<aside class="crt-source"><section class="card" data-source-id="${task.id}:problem"><p class="eyebrow">${task.id === "practice" ? "공통 연습" : "원래 문제"}</p><h2>${esc(task.title)}</h2><p>${esc(task.problem)}</p></section>${ai ? `<section class="card ai-card" data-source-id="${task.id}:ai"><p class="eyebrow">AI 판단 지원</p><h2>${esc(task.options.find((o) => o.id === task.ai.choice).label)}을 추천합니다.</h2>${task.ai.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}</section>` : ""}${calculator()}</aside>`;
+  return `<aside id="source-panel" tabindex="-1" aria-label="원문과 계산기" class="crt-source"><section class="card" data-source-id="${task.id}:problem"><p class="eyebrow">${task.id === "practice" ? "공통 연습" : "원래 문제"}</p><h2>${esc(task.title)}</h2><p>${esc(task.problem)}</p></section>${ai ? `<section class="card ai-card" data-source-id="${task.id}:ai"><p class="eyebrow">AI 판단 지원</p><h2>${esc(task.options.find((o) => o.id === task.ai.choice).label)}을 추천합니다.</h2>${task.ai.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}</section>` : ""}${calculator()}</aside>`;
 }
 // Each submitted screen starts fresh, including AI removal and independent items.
 function resetCalculator() {
@@ -283,8 +286,28 @@ function resetCalculator() {
   calcResult = "";
 }
 function calculator() {
-  return `<section class="card calculator"><h2>계산기</h2><label class="field"><span>사칙연산 식</span><input id="calculator-input" autocomplete="off" inputmode="text" maxlength="120" placeholder="예: (12 + 6) / 3" value="${esc(calcValue)}"></label><button type="button" class="button secondary" data-action="calculate">계산</button><output id="calculator-result" aria-live="polite">${esc(calcResult)}</output></section>`;
+  return `<section class="card calculator"><h2>계산기</h2><div class="calculator-controls"><label class="field"><span>사칙연산 식</span><input id="calculator-input" autocomplete="off" inputmode="text" maxlength="120" placeholder="예: (12 + 6) / 3" value="${esc(calcValue)}"></label><button type="button" class="button secondary" data-action="calculate">계산</button></div><output id="calculator-result" aria-live="polite">${esc(calcResult)}</output><p class="small">응답을 제출하면 식과 결과가 초기화됩니다.</p></section>`;
 }
+function progress(step) {
+  const sections = ["시작 전", "연습", "묶음 1", "묶음 2", "묶음 3", "마무리"];
+  const current = step.phase === "pre" ? 0 : step.phase === "post" ? 5 : step.taskId === "practice" ? 1 : run.assignment.order.indexOf(step.taskId) + 2;
+  let phase = { pre: "시작 전 질문", decision: "답 선택", burden: "선택 돌아보기", estimate: "다음 수행 예상", feedback: "연습 풀이 확인", post: "마지막 질문" }[step.phase];
+  if (step.phase === "item") {
+    const item = taskFor(step.taskId).items.find(i => i.id === step.itemId);
+    const items = step.taskId === "practice" ? PRACTICE.items.filter(i => i.type === item.type) : item.type === "apply" ? run.assignment.applyOrders[step.taskId] : ["d", "e"];
+    const index = items.findIndex(i => (typeof i === "string" ? i : i.id) === step.itemId);
+    phase = `${item.type === "apply" ? "직접 풀기" : "풀이 설명"} ${index + 1} / ${items.length}`;
+  }
+  return `<section class="study-progress" aria-label="참여 진행"><ol>${sections.map((label,i) => `<li ${i === current ? 'aria-current="step"' : ""} class="${i < current ? "is-complete" : ""}"><span aria-hidden="true">${i < current ? "✓" : i + 1}</span>${label}${i === current ? '<span class="sr-only"> · 현재 단계</span>' : ""}</li>`).join("")}</ol><div class="step-heading"><p><strong>${esc(sections[current])} · ${esc(phase)}</strong><span>${step.index} / ${step.totalSteps} 응답 완료</span></p><progress max="${step.totalSteps}" value="${step.index}" aria-label="확정한 응답 수"></progress></div></section>`;
+}
+function submitLabel(step) {
+  if (step.phase === "post") return "응답 확정 · 완료";
+  if (step.phase === "estimate") return "예상 확정 · 직접 풀기";
+  if (step.phase === "pre") return "응답 확정 · 연습 시작";
+  if (step.phase === "feedback") return "확인 · 본 과제 시작";
+  return "응답 확정 · 다음";
+}
+
 function stepBody(step) {
   const task = taskFor(step.taskId);
   if (step.phase === "pre") return preForm();
@@ -317,7 +340,7 @@ async function render() {
     feedback = await import("./feedback.mjs");
   app.innerHTML =
     header() +
-    `<main id="main" tabindex="-1" class="crt-shell">${!run ? welcome() : step.phase === "done" ? completed() : `<div class="step-heading"><span>진행 ${step.index} / ${step.totalSteps}</span><progress max="${step.totalSteps}" value="${step.index}" aria-label="전체 진행"></progress></div><div class="${step.taskId ? "crt-grid" : ""}">${step.taskId ? source(taskFor(step.taskId), step) : ""}<section class="card crt-response"><form id="step-form" novalidate><div id="error" role="alert" tabindex="-1"></div>${stepBody(step)}<div class="actions"><button class="button" type="submit">${step.phase === "post" ? "응답 확정 · 완료" : "응답 확정 · 다음"}</button></div><p class="small">확정한 응답은 수정할 수 없습니다.</p></form></section></div>`}<div id="error-global" role="status"></div></main>`;
+    `<main id="main" tabindex="-1" class="crt-shell">${!run ? welcome() : step.phase === "done" ? completed() : `${progress(step)}${step.taskId ? '<nav class="task-shortcuts" aria-label="화면 내 이동"><button type="button" data-action="jump-response">응답 입력으로 이동</button><button type="button" data-action="jump-source">원문·계산기 보기</button></nav>' : ""}<div class="${step.taskId ? "crt-grid" : ""}">${step.taskId ? source(taskFor(step.taskId), step) : ""}<section class="card crt-response"><form id="step-form" novalidate><div id="error" role="alert" tabindex="-1"></div>${stepBody(step)}<div class="submit-area"><p class="small">${step.phase === "estimate" ? "정수로 입력해 주세요. 확정 후 수정·AI 재열람은 할 수 없습니다." : "확정한 응답은 수정할 수 없습니다."}</p><button class="button" type="submit">${submitLabel(step)}</button></div></form></section></div>`}<div id="error-global" role="status"></div></main>`;
   const form = document.getElementById("step-form");
   if (form) {
     if (run.draft.key === String(step.index)) {
@@ -372,7 +395,9 @@ async function render() {
     recorder.context(run);
     recorder.observe(app);
   }
-  document.getElementById("main")?.focus({ preventScroll: true });
+  const heading = document.querySelector("#main h1");
+  if (heading) { heading.id = "response-title"; heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
+  window.scrollTo({ top: 0, behavior: "instant" });
 }
 function unknownState(form) {
   const u = form.elements.namedItem("unknown");
@@ -392,25 +417,35 @@ function unknownState(form) {
   }
 }
 function validateForm(form) {
-  const invalid = [...form.elements].filter(
-    (e) => e.willValidate && !e.validity.valid,
-  );
-  form.querySelectorAll(".field-error").forEach((e) => e.remove());
-  form.querySelectorAll("[aria-invalid]").forEach((e) => {
+  const names = new Set();
+  const invalid = [...form.elements].filter(e => {
+    if (!e.willValidate || e.validity.valid || names.has(e.name)) return false;
+    names.add(e.name); return true;
+  });
+  form.querySelectorAll(".field-error").forEach(e => e.remove());
+  form.querySelectorAll("[aria-invalid]").forEach(e => {
     e.removeAttribute("aria-invalid");
-    e.removeAttribute("aria-describedby");
+    if (e.dataset.help) e.setAttribute("aria-describedby", e.dataset.help);
+    else e.removeAttribute("aria-describedby");
   });
   if (!invalid.length) return true;
+  const links = document.createElement("ul"); links.className = "error-links";
+  const labels = { confidence: "혼자 풀 수 있다는 확신", predApply: "적용 예상 점수", predExplain: "설명 예상 점수", choice: "선택할 답", burden: "정신적 노력", answer: "답", work: "풀이·설명" };
   for (const [i, e] of invalid.entries()) {
-    const m = document.createElement("span");
-    m.className = "field-error";
-    m.id = `field-error-${i}`;
-    m.textContent = "이 항목의 응답 또는 입력 범위를 확인해 주세요.";
+    e.id ||= `response-${e.name}`;
+    const m = document.createElement("span"); m.className = "field-error"; m.id = `field-error-${i}`;
+    m.textContent = e.type === "number" ? `${e.min}~${e.max} 범위의 정수를 입력해 주세요.` : "이 항목에 응답해 주세요.";
     e.setAttribute("aria-invalid", "true");
-    e.setAttribute("aria-describedby", m.id);
+    e.setAttribute("aria-describedby", [e.dataset.help ?? "", m.id].filter(Boolean).join(" "));
     (e.closest("label") ?? e.parentElement).append(m);
+    const item = document.createElement("li"), link = document.createElement("a");
+    link.href = `#${e.id}`;
+    link.textContent = labels[e.name] ?? e.labels?.[0]?.textContent.slice(0, 60) ?? e.name;
+    link.onclick = event => { event.preventDefault(); e.focus(); };
+    item.append(link); links.append(item);
   }
-  error("아직 제출하지 않았습니다. 표시된 필수 항목을 확인해 주세요.");
+  error("아직 제출하지 않았습니다. 다음 항목을 확인해 주세요.");
+  document.getElementById("error")?.append(links);
   return false;
 }
 async function start(event) {
@@ -551,6 +586,12 @@ async function exportRun(candidate) {
 async function action(name) {
   if (busy && name !== "download") return;
   try {
+    if (name === "jump-response" || name === "jump-source") {
+      const target = document.getElementById(name === "jump-response" ? "response-title" : "source-panel");
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ block: "start", behavior: "instant" });
+      return;
+    }
     if (name === "calculate") {
       calcValue = document.getElementById("calculator-input").value;
       try {
