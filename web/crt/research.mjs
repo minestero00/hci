@@ -82,13 +82,39 @@ function archive() {
 function table(rows, columns) {
   return `<div class="crt-table-wrap" tabindex="0" role="region" aria-label="자료 표"><table class="crt-table"><thead><tr>${columns.map(([k, label]) => `<th scope="col">${label}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map(([k]) => `<td>${esc(row[k])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
 }
+function preparation() {
+  const tables = analysisTables(state.envelopes, state.ratings, true);
+  const scored = tables.items.filter((i) => i.response_state !== "missing" && !(i.task_id === "practice" && i.item_type === "explain"));
+  return {
+    total: state.envelopes.length,
+    answered: scored.length,
+    completed: tables.participants.filter((p) => p.status === "completed").length,
+    incomplete: tables.participants.filter((p) => p.status !== "completed").length,
+    independent: scored.filter((i) => i.rater1 == null || i.rater2 == null).length,
+    consensus: scored.filter((i) => i.rater1 != null && i.rater2 != null && i.consensus == null).length,
+    ready: tables.participants.filter((p) => p.primary_ready === 1).length,
+    otherStudy: tables.participants.filter((p) => p.mode === "study" && p.status === "completed" && p.primary_ready !== 1 && !p.exclusion_reasons.split(";").includes("ungraded")).length,
+  };
+}
+function preparationView(p = preparation()) {
+  const next = !p.total ? "먼저 서버 자료나 응답 JSON을 가져오세요."
+    : p.independent ? "제출된 답변의 독립 채점 두 개를 먼저 모아 주세요."
+    : p.consensus ? "두 독립 채점이 모인 답변을 확인하고 현재 채점에 대해 합의해 주세요."
+    : "채점이 모인 기록의 중단·제외 사유를 확인한 뒤 분석 자료를 내보내세요.";
+  return `<section class="crt-preparation" aria-labelledby="preparation-title"><div class="crt-section-title"><div><p class="research-kicker">작업 현황</p><h2 id="preparation-title">수집에서 분석 준비까지</h2></div><span class="crt-state-label">현재 브라우저의 기록 기준</span></div><dl class="crt-status-grid">${[
+    ["가져온 실행", p.total, "명부와 중단 기록 포함"], ["응답 완료", p.completed, `진행 중 ${p.incomplete}개`],
+    ["독립 채점 필요", p.independent, "두 채점 중 하나 이상 없는 답변"], ["합의 필요", p.consensus, "두 채점은 있고 유효 합의가 없는 답변"],
+    ["본 분석 자료 준비", p.ready, "완료·채점·자료 조건을 충족한 실행"],
+  ].map(([label,count,hint]) => `<div><dt>${label}</dt><dd>${count}<small>개</small></dd><p>${hint}</p></div>`).join("")}</dl><p class="crt-next-step"><strong>다음 할 일</strong> ${next}</p>${p.otherStudy ? `<p class="r-help">채점 외 자료 조건 확인이 필요한 완료 본 실험 기록 ${p.otherStudy}개가 있습니다. 진행·제외 CSV에서 사유를 확인하세요.</p>` : ""}<p class="r-help">자료 준비 수는 연구 적격 승인이나 본 실험 시작 승인이 아닙니다. 사람 파일럿과 사전 제외 기준은 별도로 확인하세요.</p></section>`;
+}
 function collectView() {
-  return `<h1>CRT v4 수집 기록</h1><p>업무형 v3 자료는 <a href="./legacy-v3-research.html">이전 작업실</a>에서 관리합니다. 새 자료와 자동으로 합치지 않습니다.</p><section class="crt-research-card"><label>응답·보관 JSON 가져오기<input id="files" type="file" accept=".json" multiple></label><div class="crt-research-tools">${button("전체 보관 JSON", "archive")}${button("블라인드 채점 묶음 생성", "packet")}</div><p>${state.envelopes.length}개 실행 · 완료 ${state.envelopes.filter((e) => e.run.status === "completed").length}개 · 팀 체험 ${state.envelopes.filter((e) => e.run.mode === "demo").length}개</p>${table(
+  const p = preparation();
+  return `<p class="research-kicker">기록 모으기</p><h1>CRT v4 수집 기록</h1>${preparationView(p)}<p>업무형 v3 자료는 <a href="./legacy-v3-research.html">이전 작업실</a>에서 관리합니다. 새 자료와 자동으로 합치지 않습니다.</p><section class="crt-research-card"><label>응답·보관 JSON 가져오기<input id="files" type="file" accept=".json" multiple></label><div class="crt-research-tools">${button("전체 보관 JSON", "archive")}${button("블라인드 채점 묶음 생성", "packet", !p.answered ? "disabled" : "")}</div><p>${state.envelopes.length}개 실행 · 완료 ${state.envelopes.filter((e) => e.run.status === "completed").length}개 · 팀 체험 ${state.envelopes.filter((e) => e.run.mode === "demo").length}개</p>${!state.envelopes.length ? '<div class="crt-empty"><h2>아직 가져온 기록이 없습니다.</h2><p>온라인 수집은 Google 로그인 후 서버 자료를 가져오세요. 파일로 받은 응답은 위의 JSON 가져오기를 사용하세요.</p><p>자료를 가져온 뒤 블라인드 채점 묶음을 만들 수 있습니다.</p></div>' : ""}${table(
     state.envelopes.map((e) => ({
       code: e.run.participantCode,
-      status: e.run.status,
-      mode: e.run.mode,
-      condition: e.run.condition,
+      status: e.run.status === "completed" ? "완료" : "진행 중",
+      mode: {study:"본 실험",pilot:"사람 파일럿",demo:"팀 체험"}[e.run.mode],
+      condition: {control:"무지원",assisted:"AI 지원",within:"집단 내 대안"}[e.run.condition],
       steps: e.run.submissions.length,
       id: e.run.id,
     })),
@@ -100,7 +126,7 @@ function collectView() {
       ["steps", "제출 수"],
       ["id", "실행 번호"],
     ],
-  )}<label>상세 기록<select id="detail-run"><option value="">실행 선택</option>${state.envelopes.map((e) => `<option value="${e.run.id}">${esc(e.run.participantCode)}</option>`).join("")}</select></label><div id="detail"></div></section>`;
+  )}<label class="crt-detail-select">상세 기록<select id="detail-run" ${!state.envelopes.length ? "disabled" : ""}><option value="">실행 선택</option>${state.envelopes.map((e) => `<option value="${e.run.id}">${esc(e.run.participantCode)}</option>`).join("")}</select></label><div id="detail"></div></section>`;
 }
 function inviteView() {
   return `<h1>참여 배정</h1><p>집단 간 설계: 두 집단 × 라틴 방진 세 순서를 6개 블록으로 섞습니다. 중도 이탈자의 자리는 재사용하지 않습니다. 배정표 관리자는 참가자 진행 담당자와 분리하세요.</p><section class="crt-research-card"><div class="crt-research-tools"><label>준비 인원<input id="count" type="number" min="1" max="300" value="30"></label><label>설계<select id="design"><option value="between">집단 간 (기본)</option><option value="within">집단 내 대안: 첫 묶음 무지원</option></select></label><label>수집 종류<select id="cohort"><option value="pilot">사람 파일럿</option><option value="study">본 실험</option></select></label>${button("서버 중앙 배정표 생성", "central")}${button("로컬·오프라인 초대 생성", "manual")}</div><p>중앙 링크는 접속 후 동의한 참가자에게 순번을 자동 배정합니다. 최초 시작은 온라인이어야 합니다. 기기·브라우저마다 익명 계정을 분리하며, 진행 중에는 같은 브라우저를 유지하세요.</p><p>로컬 초대는 담당자가 순번대로 전달하는 대체 경로입니다. 서버의 접속 순서 자동 배정과 구분해 CSV에 기록합니다. 본 실험 시작 뒤 설계를 바꾸거나 두 설계의 자료를 섞지 마세요.</p><div id="invitation-result"></div><div class="crt-research-tools">${button("초대·배정 보관 JSON", "allocation-export")}</div></section>`;
@@ -116,7 +142,7 @@ function gradeItem(item, items, role) {
   const grades = state.ratings[item.responseId] ?? {},
     value = grades[role],
     both = grades.rater1 && grades.rater2;
-  return `<section class="crt-research-card"><p>답변 ${gradeIndex + 1} / ${items.length} · ${items.filter((i) => state.ratings[i.responseId]?.[role]).length}개 채점됨</p><h2>원래 문제</h2><p>${esc(item.problem)}</p><h2>평가 문항</h2><p>${esc(item.prompt)}</p><h2>참가자 응답</h2><p>답: ${esc(item.unknown ? "모르겠음" : item.answer)}</p><p style="white-space:pre-wrap">풀이·설명: ${esc(item.work)}</p><p>숫자 확인: ${esc(item.numericCheck)} (채점 확정이 아닌 보조 표시)</p><h2>채점 기준</h2><p>정답·핵심 관계: ${esc(item.key.reason)}</p>${Object.entries(
+  return `<section class="crt-research-card"><p>답변 ${gradeIndex + 1} / ${items.length} · ${items.filter((i) => state.ratings[i.responseId]?.[role]).length}개 채점됨</p><h2 id="grade-answer-title" tabindex="-1">원래 문제</h2><p>${esc(item.problem)}</p><h2>평가 문항</h2><p>${esc(item.prompt)}</p><h2>참가자 응답</h2><p>답: ${esc(item.unknown ? "모르겠음" : item.answer)}</p><p style="white-space:pre-wrap">풀이·설명: ${esc(item.work)}</p><p>숫자 확인: ${esc(item.numericCheck)} (채점 확정이 아닌 보조 표시)</p><h2>채점 기준</h2><p>정답·핵심 관계: ${esc(item.key.reason)}</p>${Object.entries(
     item.rubric,
   )
     .map(([s, r]) => `<p>${s}점: ${esc(r)}</p>`)
@@ -125,16 +151,22 @@ function gradeItem(item, items, role) {
     )}${role === "consensus" ? `<p>${both ? `채점자 1: ${grades.rater1.score}점 (${esc(grades.rater1.reason)}) / 채점자 2: ${grades.rater2.score}점 (${esc(grades.rater2.reason)})` : "두 채점자의 독립 점수를 먼저 가져오세요."}</p>` : ""}<form id="grade-form"><label>점수<select name="score" required ${role === "consensus" && !both ? "disabled" : ""}><option value="">선택</option>${[0, 1, 2].map((s) => `<option value="${s}" ${value?.score === s ? "selected" : ""}>${s}점</option>`).join("")}</select></label><label>채점 근거·합의 사유<textarea name="reason" maxlength="2000" required>${esc(value?.reason ?? "")}</textarea></label><div class="crt-research-tools"><button class="r-button" ${role === "consensus" && !both ? "disabled" : ""}>점수 저장 · 다음</button>${button("이전 답변", "prev")}${button("다음 답변", "next")}${button("미채점 답변으로", "unrated")}</div></form></section>`;
 }
 function exportView() {
-  const a = agreement(state.ratings);
-  return `<h1>분석 자료</h1><section class="crt-research-card"><p>주 지표는 적용 예상(0~6)−적용 실제(0~6)의 세 묶음 평균입니다. D_기준과 SE_기준은 연습에서 계산합니다. 결측·미채점은 빈칸이며 모르겠음은 별도 상태입니다.</p><label><input type="checkbox" id="include-demo"> 팀 체험 자료도 포함</label><div class="crt-research-tools">${["participants", "cases", "items", "events", "stages", "sources", "flow"].map((t) => button({ participants: "참가자 CSV", cases: "묶음·연습 CSV", items: "문항·채점 CSV", events: "행동 원본 CSV", stages: "단계별 시간 CSV", sources: "자료 노출 CSV", flow: "집단별 진행·제외 CSV" }[t], "csv-" + t)).join("")}${button("전체 보관 JSON", "archive")}${button("무지원 파일럿 난이도 점검 CSV", "pilot-report")}</div><p>독립 채점 ${a.n}쌍 · 합의 전 완전 일치 ${a.exact === null ? "결측" : (a.exact * 100).toFixed(1) + "%"} · 선형 가중 카파 ${a.weightedKappa === null ? "계산 불가" : a.weightedKappa.toFixed(3)}</p><p>primary_ready는 자료 준비 표지이며 최종 연구 적격 판정이 아닙니다. 파일럿은 본 실험에서 제외합니다. 본 실험은 모집 전 정한 기준으로 제외 사유·수를 별도 보존하세요.</p><p>R 분석 스크립트와 모집·파일럿 기준은 저장소의 새 실험 계획을 따릅니다.</p></section>`;
+  const a = agreement(state.ratings), empty = !state.envelopes.length;
+  const exportGroup = (title, description, entries) => `<section class="crt-export-group"><h2>${title}</h2><p>${description}</p><div class="crt-research-tools">${entries.map(([label,action]) => button(label,action,empty ? "disabled" : "")).join("")}</div></section>`;
+  return `<p class="research-kicker">분석과 보관</p><h1>분석 자료</h1>${preparationView()}${empty ? '<p class="crt-empty">내보낼 응답이 없습니다. 먼저 ‘기록 모으기’에서 서버 자료나 응답 JSON을 가져오세요.</p>' : ""}<section class="crt-research-card"><h2>내보내기 범위</h2><label class="crt-demo-option"><input type="checkbox" id="include-demo"> 팀 체험 자료도 포함</label><p class="r-help">기본 내보내기는 사람 파일럿과 본 실험 기록을 포함합니다. 본 분석 대상과 중단·제외 사유는 CSV에서 확인하세요. 미채점·미제출은 빈칸으로 유지합니다.</p></section>
+  <div class="crt-export-grid">${exportGroup("1. 분석용 응답", "R 분석에는 참가자 CSV와 묶음·연습 CSV를 함께 사용하세요.", [["참가자 CSV","csv-participants"],["묶음·연습 CSV","csv-cases"],["문항·채점 CSV","csv-items"]])}${exportGroup("2. 진행·제외와 행동", "중단·제외 흐름과 기록 범위를 함께 확인하세요. 시간과 노출 기록은 실제 이해를 보증하지 않습니다.", [["집단별 진행·제외 CSV","csv-flow"],["행동 원본 CSV","csv-events"],["단계별 시간 CSV","csv-stages"],["자료 노출 CSV","csv-sources"]])}</div>
+  <section class="crt-research-card"><h2>3. 파일럿 점검과 전체 보관</h2><p>난이도 점검은 무지원 사람 파일럿만 사용합니다. 전체 보관 JSON에는 응답·채점·합의 이력이 포함됩니다.</p><div class="crt-research-tools">${button("무지원 파일럿 난이도 점검 CSV","pilot-report", !state.envelopes.some(e=>e.run.mode==="pilot" && e.run.condition==="control") ? "disabled" : "")}${button("전체 보관 JSON","archive")}</div></section>
+  <details class="crt-research-card"><summary>지표와 해석 주의사항</summary><p>주 지표는 적용 예상(0~6)−적용 실제(0~6)의 세 묶음 평균입니다. D_기준과 SE_기준은 연습에서 계산합니다.</p><p>독립 채점 ${a.n}쌍 · 합의 전 완전 일치 ${a.exact === null ? "결측" : (a.exact * 100).toFixed(1) + "%"} · 선형 가중 카파 ${a.weightedKappa === null ? "계산 불가" : a.weightedKappa.toFixed(3)}</p><p>자료 준비 표지는 최종 연구 적격 판정이 아닙니다. 파일럿은 본 실험 분석에서 제외합니다. R 스크립트와 사전 분석 계획에 따라 제외 사유·수를 보존하세요.</p></details>`;
 }
-function render() {
+
+function render({ focus = null } = {}) {
   const selected = {
     collect: collectView,
     invite: inviteView,
     grade: gradeView,
     export: exportView,
   }[view];
+  $("research-cloud").hidden = view !== "collect" && view !== "invite";
   $("research-view").innerHTML = selected();
   $("research-view").setAttribute("aria-labelledby", "nav-" + view);
   document.querySelectorAll("[data-view]").forEach((b) => {
@@ -155,7 +187,7 @@ function render() {
     perform(async () => {
       state.role = event.target.value;
       await persist();
-      render();
+      render({ focus: "role" });
     }),
   );
   $("grade-form")?.addEventListener("submit", (event) => {
@@ -167,6 +199,15 @@ function render() {
   $("detail-run")?.addEventListener("change", (event) =>
     showDetail(event.target.value),
   );
+  if (focus) {
+    const target = focus === "role" ? $("role")
+      : focus === "grade" ? $("grade-answer-title")
+      : $("research-view").querySelector("h1");
+    if (target) {
+      if (!target.matches("input, select, button, textarea, a")) target.tabIndex = -1;
+      target.focus();
+    }
+  }
 }
 function dirty() {
   const form = $("grade-form");
@@ -231,7 +272,7 @@ async function saveGrade(score, reason) {
   record[role] = { score, reason, ...(role === "consensus" ? { basis: consensusBasis(record) } : {}) };
   await persist();
   gradeIndex = Math.min(gradeIndex + 1, state.packet.items.length - 1);
-  render();
+  render({ focus: "grade" });
   message("채점을 저장했습니다.");
 }
 async function importFiles(files) {
@@ -342,7 +383,7 @@ async function importFiles(files) {
     }
   }
   await persist();
-  render();
+  render({ focus: view === "grade" ? "grade" : "heading" });
   message(notices.join("\n"));
 }
 function showDetail(id) {
@@ -355,12 +396,15 @@ function showDetail(id) {
     `<h2>제출 이력</h2><pre>${esc(JSON.stringify(e.run.submissions, null, 2))}</pre><h2>행동 타임라인 (최근 200개)</h2><pre>${esc(JSON.stringify(e.events.slice(-200), null, 2))}</pre>`;
 }
 async function action(name) {
-  if (name === "pilot-report")
+  if (name === "pilot-report") {
+    if (!state.envelopes.some(e => e.run.mode === "pilot" && e.run.condition === "control"))
+      throw Error("무지원 사람 파일럿 기록을 먼저 가져오세요.");
     return download(
       "hci-crt-pilot-gates",
       tableCSV(pilotReport(state.envelopes, state.ratings)),
       true,
     );
+  }
   if (name === "archive") return download("hci-crt-archive", archive());
   if (name === "allocation-export")
     return download("hci-crt-allocation", {
@@ -369,12 +413,14 @@ async function action(name) {
     });
   if (name === "packet") {
     if (!mayLeave()) return;
-    state.packet = blindPacket(state.envelopes);
+    const packet = blindPacket(state.envelopes);
+    if (!packet.items.length) throw Error("채점할 제출 답변이 없습니다. 먼저 응답 기록을 가져오세요.");
+    state.packet = packet;
     gradeIndex = 0;
     await persist();
     download("hci-crt-blind", state.packet);
     view = "grade";
-    render();
+    render({ focus: "grade" });
     return;
   }
   if (name === "manual" || name === "central") {
@@ -436,7 +482,7 @@ async function action(name) {
             0,
             Math.min(items.length - 1, gradeIndex + (name === "next" ? 1 : -1)),
           );
-    render();
+    render({ focus: "grade" });
     return;
   }
   if (name.startsWith("csv-")) {
@@ -445,7 +491,9 @@ async function action(name) {
       state.ratings,
       $("include-demo")?.checked,
     );
-    download("hci-crt-" + name.slice(4), tableCSV(tables[name.slice(4)]), true);
+    const rows = tables[name.slice(4)];
+    if (!rows?.length) throw Error("선택한 범위에 내보낼 자료가 없습니다. 팀 체험만 있다면 ‘팀 체험 자료도 포함’을 선택하세요.");
+    download("hci-crt-" + name.slice(4), tableCSV(rows), true);
   }
 }
 async function cloudAction(kind) {
