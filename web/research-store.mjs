@@ -1,10 +1,11 @@
 const EMPTY = () => ({ envelopes: [], ratings: {}, invitations: [], packet: null, role: 'rater1', gradeHistory: [] });
 export class ResearchStore {
   mode = 'memory'; db = null; state = EMPTY(); lastEnvelopes = null; revision = 0;
+  constructor({dbName = 'hci-workspace-research-v3'} = {}) { this.dbName = dbName; }
   async init() {
     try {
       this.db = await new Promise((resolve, reject) => {
-        const request = indexedDB.open('hci-workspace-research-v3', 1);
+        const request = indexedDB.open(this.dbName, 1);
         request.onupgradeneeded = () => request.result.createObjectStore('workspace');
         request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
       });

@@ -1,7 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
  match /databases/{database}/documents {
-  function researcher(){return request.auth != null && request.auth.token.email_verified == true && request.auth.token.email in ['superriaco@gmail.com', 'tigers0214@gmail.com', 'slightsmille@gmail.com'];}
+  function researcher(){return request.auth != null && request.auth.token.get('email_verified', false) == true && request.auth.token.get('email', '') in ['superriaco@gmail.com', 'tigers0214@gmail.com', 'slightsmille@gmail.com'];}
   function owner(){return request.auth != null && request.auth.uid == resource.data.ownerUid;}
   function validRun(){return request.auth != null && request.resource.data.keys().hasOnly(['ownerUid','payload','updatedAt']) && request.resource.data.ownerUid == request.auth.uid && request.resource.data.payload is string && request.resource.data.payload.size() < 400000 && request.resource.data.updatedAt is string;}
   match /runs/{runId} {
@@ -18,5 +18,40 @@ service cloud.firestore {
     allow delete: if false;
    }
   }
+  // CRT allocation: one immutable UID claim and one atomic counter increment.
+  match /crtBatches/{batchId} {
+   allow get: if request.auth != null;
+   allow list, create, update: if researcher();
+   allow delete: if false;
+   match /state/counter {
+    allow get: if request.auth != null;
+    allow list: if researcher();
+    allow create: if researcher() && request.resource.data.keys().hasOnly(['next']) && request.resource.data.next == 1;
+    allow update: if request.auth != null && request.resource.data.keys().hasOnly(['next'])
+      && get(/databases/$(database)/documents/crtBatches/$(batchId)).data.open == true
+      && request.resource.data.next == resource.data.next + 1
+      && resource.data.next <= get(/databases/$(database)/documents/crtBatches/$(batchId)).data.count
+      && !exists(/databases/$(database)/documents/crtBatches/$(batchId)/claims/$(request.auth.uid))
+      && getAfter(/databases/$(database)/documents/crtBatches/$(batchId)/claims/$(request.auth.uid)).data.sequence == resource.data.next;
+   }
+   match /slots/{slotId} {
+    allow get: if researcher() || (request.auth != null
+      && resource.data.sequence <= get(/databases/$(database)/documents/crtBatches/$(batchId)/state/counter).data.next);
+    allow list: if researcher();
+    allow create: if researcher();
+    allow update, delete: if false;
+   }
+   match /claims/{uid} {
+    allow get: if researcher() || (request.auth != null && request.auth.uid == uid);
+    allow list: if researcher();
+    allow create: if request.auth != null && request.auth.uid == uid
+      && get(/databases/$(database)/documents/crtBatches/$(batchId)).data.open == true
+      && request.resource.data.sequence == get(/databases/$(database)/documents/crtBatches/$(batchId)/state/counter).data.next
+      && getAfter(/databases/$(database)/documents/crtBatches/$(batchId)/state/counter).data.next == request.resource.data.sequence + 1
+      && request.resource.data == get(/databases/$(database)/documents/crtBatches/$(batchId)/slots/$(string(request.resource.data.sequence))).data;
+    allow update, delete: if false;
+   }
+  }
+
  }
 }

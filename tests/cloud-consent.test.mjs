@@ -5,7 +5,7 @@ import { BrowserStore } from '../web/storage.mjs';
 import { createRun } from '../web/core.mjs';
 
 test('a legacy local run requires explicit cloud consent and cancellation sends nothing',async t=>{
- const env=await domEnvironment(new URL('../web/index.html',import.meta.url),'https://minestero00.github.io/hci/');t.after(()=>env.cleanup());
+ const env=await domEnvironment(new URL('../web/legacy-v3.html',import.meta.url),'https://minestero00.github.io/hci/');t.after(()=>env.cleanup());
  const store=await new BrowserStore().init(),run=createRun({participantCode:'LEGACY01',condition:'control'});await store.saveRun(run);localStorage.setItem('hci-workspace.activeRun',run.id);
  await import('../web/app.mjs?legacy-cloud-consent');await until(()=>document.querySelector('[data-action=resume]'),'legacy resume');
  document.querySelector('[data-action=resume]').click();await until(()=>document.querySelector('#session-dialog[open]'),'cloud consent');

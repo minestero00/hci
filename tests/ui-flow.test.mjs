@@ -7,7 +7,7 @@ import { ANSWER_KEY } from '../web/research-key.mjs';
 
 for(const condition of ['assisted','control'])test(`participant ${condition} screens preserve disclosure boundaries and export a complete run`,async t=>{
  const invite=makeInvitations(4,'https://example.test/hci/index.html').find(i=>i.condition===condition);
- const env=await domEnvironment(new URL('../web/index.html',import.meta.url),invite.url);t.after(()=>env.cleanup());
+ const env=await domEnvironment(new URL('../web/legacy-v3.html',import.meta.url),invite.url);t.after(()=>env.cleanup());
  await import(`../web/app.mjs?dom-flow-${condition}`);
  await until(()=>env.document.querySelector('#start-form'),'welcome');
  assert.equal(document.querySelector('a[href*=research]'),null);assert.match(document.querySelector('.welcome-lead').textContent,/가상 업무/);assert.ok(!document.getElementById('main').textContent.includes('명단, 인력, 준비 시간'));

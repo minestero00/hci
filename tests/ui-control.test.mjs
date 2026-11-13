@@ -6,7 +6,7 @@ import { BrowserStore } from '../web/storage.mjs';
 
 test('control UI blocks narrow participation, hides AI, and accepts explicit unknown memo',async t=>{
  const invite=makeInvitations(4,'https://example.test/hci/index.html').find(i=>i.condition==='control');
- const env=await domEnvironment(new URL('../web/index.html',import.meta.url),invite.url);t.after(()=>env.cleanup());await import('../web/app.mjs?control-flow');
+ const env=await domEnvironment(new URL('../web/legacy-v3.html',import.meta.url),invite.url);t.after(()=>env.cleanup());await import('../web/app.mjs?control-flow');
  await until(()=>document.getElementById('start-form'),'welcome');
  document.querySelector('input[name=consent]').checked=true;
  Object.defineProperty(window,'innerWidth',{value:800,writable:true,configurable:true});submit(document,'start-form');assert.match(document.getElementById('form-error').textContent,/PC/);assert.equal(localStorage.getItem('hci-workspace.activeRun'),null);

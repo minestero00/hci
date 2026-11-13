@@ -4,7 +4,7 @@ import { domEnvironment, until, submit } from './helpers/dom-env.mjs';
 import { BrowserStore } from '../web/storage.mjs';
 
 test('invalid invitation presents recovery and never offers accidental demo participation',async t=>{
- const env=await domEnvironment(new URL('../web/index.html',import.meta.url),'https://example.test/hci/#invite=broken');t.after(()=>env.cleanup());
+ const env=await domEnvironment(new URL('../web/legacy-v3.html',import.meta.url),'https://example.test/hci/#invite=broken');t.after(()=>env.cleanup());
  await import('../web/app.mjs?invalid-invite-content');
  await until(()=>document.querySelector('.blocked-wrap'),'invalid link screen');
  assert.match(document.getElementById('main').textContent,/참여 링크를 확인/);
@@ -13,7 +13,7 @@ test('invalid invitation presents recovery and never offers accidental demo part
 });
 
 test('temporary storage copy stays truthful in consent, narrow mode, privacy and pause/resume',async t=>{
- const env=await domEnvironment(new URL('../web/index.html',import.meta.url));t.after(()=>env.cleanup());
+ const env=await domEnvironment(new URL('../web/legacy-v3.html',import.meta.url));t.after(()=>env.cleanup());
  const original=BrowserStore.prototype.init;BrowserStore.prototype.init=async function(){this.mode='memory';return this;};t.after(()=>{BrowserStore.prototype.init=original;});
  await import('../web/app.mjs?temporary-storage-content');await until(()=>document.getElementById('start-form'),'temporary storage welcome');
  assert.match(document.querySelector('.intro-tags').textContent,/현재 탭에 임시 보관/);
