@@ -21,7 +21,7 @@ AI 추천·설명으로 답을 고른 뒤, **AI 없이 직접 푸는 수행**과
 ## 1. 전체 시스템 흐름
 
 ```mermaid
-flowchart LR
+flowchart TB
     P["참가자 · GitHub Pages"] --> A["Firebase 익명 인증"]
     A --> D["Firestore<br/>배정 · 응답 · 행동 · 수신 확인"]
     P --> L["참가자 브라우저<br/>초안 · 로컬 보관"]
@@ -30,7 +30,7 @@ flowchart LR
     G -->|조회 권한| D
     D -->|자료 가져오기| W["연구자 브라우저<br/>수집 · 독립 채점 · 합의"]
     W --> F["JSON 보관 · CSV 내보내기"]
-    F --> S["로컬 R 분석"]
+    F -->|참가자·묶음 CSV| S["로컬 R 분석"]
 ```
 
 | 구성 요소 | 담당하는 일 | 보관 범위 |
@@ -48,14 +48,12 @@ flowchart LR
 ```mermaid
 flowchart TD
     Start["안내 · 동의 · 시작 전 질문"] --> Practice["공통 연습<br/>선택 → 예상 → 직접 수행 → 풀이 확인"]
-    Practice --> Choice["본 과제: 원 문제 답 선택"]
-    Choice --> Burden["방금 선택의 정신적 노력 응답"]
-    Burden --> Estimate["AI 없는 단계로 전환<br/>확신 · 적용 예상 · 설명 예상"]
-    Estimate --> Apply["조건이 바뀐 적용 문제 3개"]
-    Apply --> Explain["원래 문제의 풀이 설명 2개"]
-    Explain --> More{"세 묶음을 모두 마쳤나요?"}
-    More -->|아니오: 다음 묶음| Choice
-    More -->|예| Post["마지막 질문 · 응답 완료"]
+    Practice --> Choice
+    subgraph Main["본 과제 · 다음 흐름을 세 묶음 반복"]
+        Choice["원 문제 답 선택 → 정신적 노력 응답"] --> Estimate["AI 없는 단계로 전환<br/>확신 · 적용 예상 · 설명 예상"]
+        Estimate --> Perform["조건이 바뀐 적용 문제 3개<br/>→ 원래 풀이 설명 2개"]
+    end
+    Perform --> Post["마지막 질문 · 응답 완료"]
     Post --> Receipt["최종 서버 수신 확인 · 파일 보관"]
 ```
 
