@@ -1,5 +1,11 @@
 # 실제 브라우저 검증 — 2026-11-11
 
+> **상태: 업무형 v3의 과거 검증 기록.** 원 검증일은 2026-11-11이며 아래 대상 SHA·관찰·수치·미실행 범위를 보존한다. 문서 상태 정리: 2026-11-15.
+>
+> 본문의 로컬·Pages 기본 주소는 검증 당시 v3 화면이었다. 현재 기본 주소는 CRT v4이며, v3 자료 확인은 [v3 참가자 복구 화면](https://minestero00.github.io/hci/legacy-v3.html)과 [v3 연구자 복구 화면](https://minestero00.github.io/hci/legacy-v3-research.html)을 사용한다. 이 기록을 현재 v4의 검증 결과로 사용하지 않는다.
+>
+> 현재 기준: [README](../README.md) · [CRT v4 실험 계획](../idea/experiment-plan.md) · [CRT v4 상태·검증](crt-v4.md).
+
 검증 대상 소스: `e278abbe45f755a8ea9d4e9e7e1999680f0fbf5a`.
 Chrome DevTools로 실제 Chrome 157을 조작했다. 호스트는 macOS 27.2 / arm64이며,
 로컬 `npm run dev`의 `http://127.0.0.1:4173/hci/`를 사용했다.
